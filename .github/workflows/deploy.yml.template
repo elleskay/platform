@@ -1,0 +1,60 @@
+# Rename to deploy.yml and customize per app.
+# This is a skeleton showing the standard deploy pattern: build, push to ECR (if applicable),
+# run CDK deploy. Adapt per app's actual deploy target.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - run: npm ci
+      - run: npm run build
+
+      # Uncomment if deploying a container to ECR
+      # - uses: aws-actions/amazon-ecr-login@v2
+      #   id: ecr
+      # - run: |
+      #     docker build -t $ECR_REGISTRY/$ECR_REPO:$GITHUB_SHA .
+      #     docker push $ECR_REGISTRY/$ECR_REPO:$GITHUB_SHA
+
+      - working-directory: infra/cdk/base
+        run: |
+          npm ci
+          npx cdk deploy --all --require-approval never
