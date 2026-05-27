@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workflow-lint:
+    name: Workflow lint (actionlint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actionlint
+        uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck --if-present
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint --if-present
+
+  build:
+    name: Build demo (Next.js + OpenNext)
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Next.js build
+        working-directory: apps/_demo
+        env:
+          AUTH_SECRET: build-time-placeholder-not-used-at-runtime
+          ALLOWED_ORIGINS: "*.cloudfront.net"
+        run: npm run build
+      - name: OpenNext build
+        working-directory: apps/_demo
+        env:
+          AUTH_SECRET: build-time-placeholder-not-used-at-runtime
+          ALLOWED_ORIGINS: "*.cloudfront.net"
+        run: npm run build:open-next
+      - name: Upload OpenNext output
+        uses: actions/upload-artifact@v4
+        with:
+          name: open-next-output
+          path: apps/_demo/.open-next
+          retention-days: 1
+          include-hidden-files: true
+          if-no-files-found: error
+
+  cdk-synth:
+    name: CDK synth (proves construct works against demo)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Download OpenNext output
+        uses: actions/download-artifact@v4
+        with:
+          name: open-next-output
+          path: apps/_demo/.open-next
+      - name: Install CDK package deps
+        working-directory: infra/cdk/_template
+        run: npm install
+      - name: cdk synth
+        working-directory: infra/cdk/_template
+        env:
+          CDK_DEFAULT_ACCOUNT: "000000000000"
+          CDK_DEFAULT_REGION: ap-southeast-1
+          DATABASE_URL: postgres://placeholder
+          AUTH_SECRET: placeholder
+          AUTH_URL: https://placeholder.cloudfront.net
+          PLATFORM_DEMO_APP_PATH: apps/_demo
+        run: npx cdk synth
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test --if-present
+
+  spec-test:
+    name: spec-test (build + gate self-test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build @platform/spec-test
+        working-directory: packages/spec-test
+        run: npx tsc
+      - name: Validate sample spec
+        working-directory: packages/spec-test
+        run: node dist/cli.js --spec samples/example.spec.yml --coverage samples/results-full.jsonl --out /tmp/sample-report.md
+      - name: Gate fails on partial coverage (expected exit 1)
+        working-directory: packages/spec-test
+        run: |
+          set +e
+          node dist/cli.js --spec samples/example.spec.yml --coverage samples/results.jsonl --out /tmp/partial.md
+          rc=$?
+          set -e
+          if [ "$rc" != "1" ]; then
+            echo "expected exit 1 from partial coverage, got $rc"
+            exit 1
+          fi
+          echo "gate correctly exits 1 on partial coverage"
