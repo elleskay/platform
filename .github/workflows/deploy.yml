@@ -72,7 +72,7 @@ jobs:
         run: npx cdk deploy --all --require-approval never --outputs-file cdk-outputs.json
 
       - name: Extract deployed URL
-        id: outputs
+        id: cdk
         working-directory: ${{ env.CDK_DIR }}
         run: |
           URL=$(node -e "const o=require('./cdk-outputs.json'); for(const k of Object.keys(o)) for(const k2 of Object.keys(o[k])) if(k2.endsWith('DistributionUrl')) { console.log(o[k][k2]); break; }")
@@ -80,4 +80,4 @@ jobs:
           echo "Deployed: $URL"
 
       - name: Smoke test
-        run: ./scripts/verify-deploy.sh "${{ steps.outputs.url }}"
+        run: bash scripts/verify-deploy.sh "${{ steps.cdk.outputs.url }}"
