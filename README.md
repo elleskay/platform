@@ -15,7 +15,7 @@ Designed to be cloned per-app, not vendored as a dependency.
 | Full CDK package scaffold (copy and rename per app) | `infra/cdk/_template/` |
 | One-time AWS setup stack (OIDC + IAM role) | `infra/cdk/_setup/` |
 | Pre-canned IAM policy for the deploy user/role | `infra/iam/cdk-deploy-policy.json` |
-| Reference overlay files (next.config, auth.config, middleware, SignOutButton) | `apps/_template/` |
+| Reference overlay files (next.config, auth.config, middleware, SignOutButton, Sentry, PostHog, Sonner, Resend, Upstash) | `apps/_template/` |
 | **Working demo app** (proves the construct + patterns end to end) | `apps/_demo/` |
 | Smoke-test script (9 checks, catches real production failures) | `scripts/verify-deploy.sh` |
 | Stack and security guidance | `docs/` |
