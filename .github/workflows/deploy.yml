@@ -80,4 +80,4 @@ jobs:
           echo "Deployed: $URL"
 
       - name: Smoke test
-        run: bash scripts/verify-deploy.sh "${{ steps.cdk.outputs.url }}"
+        run: ./scripts/verify-deploy.sh "${{ steps.cdk.outputs.url }}"
