@@ -26,7 +26,7 @@ env:
   # Override with repo variables if your paths differ from the convention.
   APP_DIR: ${{ vars.APP_DIR || 'apps/web' }}
   CDK_DIR: ${{ vars.CDK_DIR || 'infra/cdk/_template' }}
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
 
 jobs:
   # Skip the deploy when secrets aren't configured. This lets the platform
