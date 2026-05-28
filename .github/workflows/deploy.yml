@@ -26,7 +26,7 @@ env:
   # Override with repo variables if your paths differ from the convention.
   APP_DIR: ${{ vars.APP_DIR || 'apps/web' }}
   CDK_DIR: ${{ vars.CDK_DIR || 'infra/cdk/_template' }}
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
 
 jobs:
   # Skip the deploy when secrets aren't configured. This lets the platform
@@ -57,15 +57,15 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'production' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
