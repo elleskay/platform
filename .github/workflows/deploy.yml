@@ -88,6 +88,22 @@ jobs:
             echo "::notice::No db/migrate.ts found, skipping migration step"
           fi
 
+      # Seed reference / demo data after migrations. Must be idempotent
+      # (look up by natural key, never delete user-generated rows) so reruns
+      # on every deploy are safe. See docs/variants/default-nextjs.md "Seed
+      # strategy" for the recommended pattern. Skipped if the app has no
+      # db/seed-demo.ts.
+      - name: Seed demo data (if db/seed-demo.ts exists)
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -f db/seed-demo.ts ]; then
+            npx tsx db/seed-demo.ts
+          else
+            echo "::notice::No db/seed-demo.ts found, skipping seed step"
+          fi
+
       - name: Build Next.js with OpenNext
         working-directory: ${{ env.APP_DIR }}
         env:
