@@ -69,7 +69,7 @@ jobs:
           ALLOWED_ORIGINS: "*.cloudfront.net"
         run: npm run build:open-next
       - name: Upload OpenNext output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: open-next-output
           path: apps/_demo/.open-next
