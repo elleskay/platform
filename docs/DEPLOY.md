@@ -199,6 +199,14 @@ See `docs/variants/default-nextjs.md` "Seed strategy" for the full pattern (incl
 2. Construct level: for a content/SSG app, pass `defaultCachePolicy` to `NextjsServerless` with a policy that honours origin `Cache-Control` (minTtl 0), so cacheable pages cache at CloudFront while dynamic routes (which Next marks `no-store`) stay uncached. See the `defaultCachePolicy` prop docs in `NextjsServerless.ts`.
 3. Or request a Lambda concurrency limit increase for the account.
 
+### 12. A file in `public/` returns 404 in production
+
+**Symptom:** A static file you put in the app's `public/` folder (for example `robots.txt`, `sitemap.xml`, `manifest.json`, an OG image, or a web worker) loads fine with `next start` but returns a 404 from the server Lambda once deployed.
+
+**Cause:** OpenNext copies `public/` to the assets bucket root, but CloudFront only forwarded a fixed set of paths to S3. Everything else fell through to the server Lambda, which has no route for arbitrary public files.
+
+**Fix:** The construct now reads `.open-next/assets` at synth time and adds an S3 behavior for every top-level public entry (a file becomes `/<file>`, a folder becomes `/<folder>/*`), so all public assets are served from S3 automatically. Notes: the build output must exist before synth (gotcha #6, the workflow already orders this), and CloudFront allows 25 cache behaviors per distribution by default, so keep many public files inside folders rather than dozens at the root. If you author a bundled asset (e.g. a pdf.js worker), prefer `new URL("pkg/worker.mjs", import.meta.url)` so it lands under `/_next/static` rather than relying on a root `public/` file.
+
 ## Environments
 
 Default: `production`. Add `staging` by:
