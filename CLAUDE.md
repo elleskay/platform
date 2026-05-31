@@ -47,7 +47,7 @@ Only the cross-cutting platform layer:
 - Reusable CDK construct + CDK package scaffold (`infra/cdk/_template/`)
 - IAM policy JSON
 - Reference overlay files (`apps/_template/`)
-- Working demo app (`apps/web/`) for self-test
+- Working demo app (`apps/_demo/`) for self-test
 - Smoke-test script
 - Base TS/ESLint/Prettier/Commitlint configs
 - Security policy, SSDLC docs, deploy runbook
@@ -59,7 +59,7 @@ Only the cross-cutting platform layer:
 - Per-product config, secrets, or env files
 - Speculative variants for stacks no real app uses
 
-The demo app at `apps/web/` exists to test the construct, not to ship features. Keep it minimal.
+The demo app at `apps/_demo/` exists to test the construct, not to ship features. Keep it minimal.
 
 ## Stack conventions
 
@@ -82,7 +82,7 @@ The demo app at `apps/web/` exists to test the construct, not to ship features. 
 ## Security defaults
 
 - Never commit secrets. `.env.local` is gitignored, production secrets live in GitHub Actions secrets and Lambda env vars.
-- Security headers configured in `apps/_template/next.config.ts` (and apps/web/next.config.ts).
+- Security headers configured in `apps/_template/next.config.ts` (and `apps/_demo/next.config.ts`).
 - Input validation via Zod on every server action.
 - Dependabot enabled, weekly cadence.
 - The IAM policy in `infra/iam/cdk-deploy-policy.json` is the least-privilege baseline for the deploy user. Use it instead of `AdministratorAccess`.
@@ -103,7 +103,7 @@ All documented in `docs/DEPLOY.md`. Don't undo the fixes:
 
 ## When adding a new app to a cloned repo
 
-1. Replace `apps/web/` with your real Next.js app (or grow the demo)
+1. Create your real app at `apps/web/` (or copy `apps/_demo/` and grow it). Leave `apps/_demo/` in place for CI's self-test.
 2. If scaffolding with `create-next-app`, overlay files from `apps/_template/`
 3. Rename `infra/cdk/_template/` to `infra/cdk/<your-app>/`, edit `bin/app.ts` stack id
 4. Configure GitHub secrets/vars per `docs/DEPLOY.md`, push, verify smoke test passes
