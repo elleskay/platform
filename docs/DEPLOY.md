@@ -188,6 +188,17 @@ If you're shipping a brand-new app, ignore this. Logical ID overrides only matte
 
 See `docs/variants/default-nextjs.md` "Seed strategy" for the full pattern (including `ensureX` helpers and the `DEMO_ANCHOR` constant for deterministic synthetic activity). Anchored to Rollback rule above ("never run destructive operations in deploy"): seed-demo respects that by design.
 
+### 11. Every request hits Lambda; "Rate Exceeded" on low-concurrency accounts
+
+**Symptom:** Pages intermittently return `{"Reason":"ConcurrentInvocationLimitExceeded","message":"Rate Exceeded"}`, especially on a fresh AWS account (default Lambda concurrency can be as low as 10). A single page load can fan out several invocations because Next.js prefetches linked routes.
+
+**Cause:** The construct's default CloudFront behavior uses `CACHING_DISABLED`, so the HTML/RSC responses are never cached at the edge. Every visit and every prefetch goes to the server Lambda. That is the safe default for auth/SSR apps (never cache a personalized response) but wasteful and fragile for static/SSG-heavy apps.
+
+**Fix:** Two levers, use either or both.
+1. App level: set `prefetch={false}` on `next/link` to stop the prefetch fan-out (cheapest mitigation).
+2. Construct level: for a content/SSG app, pass `defaultCachePolicy` to `NextjsServerless` with a policy that honours origin `Cache-Control` (minTtl 0), so cacheable pages cache at CloudFront while dynamic routes (which Next marks `no-store`) stay uncached. See the `defaultCachePolicy` prop docs in `NextjsServerless.ts`.
+3. Or request a Lambda concurrency limit increase for the account.
+
 ## Environments
 
 Default: `production`. Add `staging` by:
