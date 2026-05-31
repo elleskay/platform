@@ -58,6 +58,29 @@ export interface NextjsServerlessProps {
   readonly priceClass?: cloudfront.PriceClass;
 
   /**
+   * Cache policy for the default behavior (the HTML/RSC responses served by the
+   * server Lambda). Defaults to CACHING_DISABLED, the safe choice for auth/SSR
+   * apps because it never caches a personalized response. The downside: every
+   * request, including Next.js link prefetches and repeat visits, hits the
+   * Lambda. That is wasteful for static/SSG-heavy apps and can trip the Lambda
+   * account concurrency limit under modest traffic (ConcurrentInvocationLimitExceeded).
+   *
+   * For a content/SSG app, pass a policy with minTtl 0 that honours the origin
+   * Cache-Control headers Next.js already sets, so cacheable pages cache at the
+   * edge while dynamic routes (which Next marks no-store) stay uncached:
+   *
+   *   const respectOrigin = new cloudfront.CachePolicy(this, "RespectOrigin", {
+   *     minTtl: cdk.Duration.seconds(0),
+   *     defaultTtl: cdk.Duration.seconds(0),
+   *     maxTtl: cdk.Duration.days(365),
+   *     enableAcceptEncodingBrotli: true,
+   *     enableAcceptEncodingGzip: true,
+   *   });
+   *   new NextjsServerless(this, "Web", { appPath, environment, defaultCachePolicy: respectOrigin });
+   */
+  readonly defaultCachePolicy?: cloudfront.ICachePolicy;
+
+  /**
    * Log retention for the Lambda log groups. Default 14 days.
    */
   readonly logRetention?: logs.RetentionDays;
@@ -221,7 +244,8 @@ export class NextjsServerless extends Construct {
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        cachePolicy:
+          props.defaultCachePolicy ?? cloudfront.CachePolicy.CACHING_DISABLED,
         originRequestPolicy: requestForwardAll,
         responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
       },
