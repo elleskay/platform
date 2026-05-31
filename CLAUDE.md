@@ -100,6 +100,7 @@ All documented in `docs/DEPLOY.md`. Don't undo the fixes:
 7. **First deploy needs two passes** (or use `customDomain` prop on the construct).
 8. **Refactoring resources into a construct changes logical IDs.** Use `logicalIdOverrides` for in-place upgrades.
 9. **CloudFront deletes take 10-15 minutes.** Not a bug.
+10. **`public/` files are auto-routed to S3** by the construct (it scans `.open-next/assets` at synth). A root `public/` file like `robots.txt` would otherwise 404 via the server Lambda. Bundled assets (e.g. a pdf.js worker) should use `new URL("pkg/worker.mjs", import.meta.url)` to land under `/_next/static`. See `docs/DEPLOY.md` #12.
 
 ## When adding a new app to a cloned repo
 
