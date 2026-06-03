@@ -217,6 +217,24 @@ See `docs/variants/default-nextjs.md` "Seed strategy" for the full pattern (incl
 
 > Non-auth apps: the post-deploy smoke test auto-detects a public app (root returns 200 instead of redirecting to `/login`) and skips the auth-only checks, so you do not need to edit `scripts/verify-deploy.sh` for a public single-page app.
 
+### 14. A slow route fails in production after ~30 seconds
+
+**Symptom:** A route that runs slow work (a multi-pass LLM call, a large export, a heavy query) works locally but returns a 502/504 or a generic "failed" once deployed, especially on larger inputs. It often looks intermittent because it only trips when the work crosses ~30s.
+
+**Cause:** The construct defaults the server Lambda timeout and the CloudFront origin read timeout to **30 seconds**. A Next.js route `export const maxDuration = 60` is only a hint and does **not** change the CDK-set Lambda timeout, so the request is killed at 30s regardless.
+
+**Fix:** Pass `serverTimeoutSeconds` to the `NextjsServerless` construct in your app's `web-stack.ts` (it raises both the Lambda timeout and the CloudFront read timeout together). CloudFront allows up to 60 without a quota increase:
+
+```ts
+new NextjsServerless(this, "Web", {
+  appPath: ...,
+  serverTimeoutSeconds: 60, // for AI / long-running routes
+  environment: { ... },
+});
+```
+
+For work that genuinely needs longer than 60s, move it off the request path (a queue/async job) rather than holding the HTTP connection open.
+
 ## Environments
 
 Default: `production`. Add `staging` by:
