@@ -207,6 +207,34 @@ See `docs/variants/default-nextjs.md` "Seed strategy" for the full pattern (incl
 
 **Fix:** The construct now reads `.open-next/assets` at synth time and adds an S3 behavior for every top-level public entry (a file becomes `/<file>`, a folder becomes `/<folder>/*`), so all public assets are served from S3 automatically. Notes: the build output must exist before synth (gotcha #6, the workflow already orders this), and CloudFront allows 25 cache behaviors per distribution by default, so keep many public files inside folders rather than dozens at the root. If you author a bundled asset (e.g. a pdf.js worker), prefer `new URL("pkg/worker.mjs", import.meta.url)` so it lands under `/_next/static` rather than relying on a root `public/` file.
 
+### 13. An app-specific runtime secret (e.g. an AI key) is empty in production
+
+**Symptom:** A route that needs an env var the platform does not ship by default (an `ANTHROPIC_API_KEY`, a third-party API key, a feature flag) works locally but returns 503 / behaves as unconfigured once deployed, even though you set the value as a GitHub secret or variable.
+
+**Cause:** The deploy workflow only forwards the platform's own env (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `ALLOWED_ORIGINS`) into the build and CDK steps, and the construct only bakes those into the Lambda. A GitHub secret that nothing reads never reaches the function. Remember env is baked at synth (gotcha #4), so it must be present during `cdk deploy`, not just at runtime.
+
+**Fix:** Wire the new var in **both** places. (1) In your app's CDK stack (`infra/cdk/<app>/lib/web-stack.ts`) add it to the construct's `environment: {}` so it is baked into the Lambda. (2) In `.github/workflows/deploy.yml`, add it to the `env:` of the **CDK deploy** step (`MY_KEY: ${{ secrets.MY_KEY }}` or `${{ vars.MY_KEY }}`). Setting it only as a repo secret/variable is not enough. After deploy, `curl` the live endpoint to confirm the value actually reached the Lambda; a green deploy does not prove the env was wired.
+
+> Non-auth apps: the post-deploy smoke test auto-detects a public app (root returns 200 instead of redirecting to `/login`) and skips the auth-only checks, so you do not need to edit `scripts/verify-deploy.sh` for a public single-page app.
+
+### 14. A slow route fails in production after ~30 seconds
+
+**Symptom:** A route that runs slow work (a multi-pass LLM call, a large export, a heavy query) works locally but returns a 502/504 or a generic "failed" once deployed, especially on larger inputs. It often looks intermittent because it only trips when the work crosses ~30s.
+
+**Cause:** The construct defaults the server Lambda timeout and the CloudFront origin read timeout to **30 seconds**. A Next.js route `export const maxDuration = 60` is only a hint and does **not** change the CDK-set Lambda timeout, so the request is killed at 30s regardless.
+
+**Fix:** Pass `serverTimeoutSeconds` to the `NextjsServerless` construct in your app's `web-stack.ts` (it raises both the Lambda timeout and the CloudFront read timeout together). CloudFront allows up to 60 without a quota increase:
+
+```ts
+new NextjsServerless(this, "Web", {
+  appPath: ...,
+  serverTimeoutSeconds: 60, // for AI / long-running routes
+  environment: { ... },
+});
+```
+
+For work that genuinely needs longer than 60s, move it off the request path (a queue/async job) rather than holding the HTTP connection open.
+
 ## Environments
 
 Default: `production`. Add `staging` by:
