@@ -31,7 +31,7 @@ infra/
 ├── cdk/_setup/                      # One-time stack: GitHub OIDC + IAM role
 └── iam/cdk-deploy-policy.json       # Least-privilege IAM policy
 
-scripts/verify-deploy.sh             # Post-deploy smoke test (9 checks)
+scripts/verify-deploy.sh             # Post-deploy smoke test (auth-aware: full auth suite or public subset)
 
 .github/workflows/
 ├── ci.yml                           # actionlint, typecheck, lint, demo build, cdk synth
@@ -101,6 +101,7 @@ All documented in `docs/DEPLOY.md`. Don't undo the fixes:
 8. **Refactoring resources into a construct changes logical IDs.** Use `logicalIdOverrides` for in-place upgrades.
 9. **CloudFront deletes take 10-15 minutes.** Not a bug.
 10. **`public/` files are auto-routed to S3** by the construct (it scans `.open-next/assets` at synth). A root `public/` file like `robots.txt` would otherwise 404 via the server Lambda. Bundled assets (e.g. a pdf.js worker) should use `new URL("pkg/worker.mjs", import.meta.url)` to land under `/_next/static`. See `docs/DEPLOY.md` #12.
+11. **App-specific runtime secrets (e.g. an AI key) must be wired in two places**: the app's CDK `web-stack.ts` `environment` AND the deploy workflow's CDK-deploy step. A GitHub secret nothing forwards never reaches the Lambda (env is baked at synth, #5). The smoke test also adapts to non-auth apps. See `docs/DEPLOY.md` #13.
 
 ## When adding a new app to a cloned repo
 
