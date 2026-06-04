@@ -69,13 +69,13 @@ All five helpers no-op cleanly without their env vars, so omit any you don't use
 
 `.github/workflows/deploy.yml` runs on push to `main`:
 
-1. Checkout, install Node 20, restore npm cache.
+1. Checkout, install Node 22, restore npm cache.
 2. Assume the OIDC role.
 3. Install workspace dependencies (`npm ci`).
 4. Apply DB migrations (`npx tsx db/migrate.ts` in `apps/web/`), conditional on `db/migrate.ts` existing. Runs **before** the new Lambda code goes live so the new code never references a column that hasn't been created yet.
 5. Seed reference / demo data (`npx tsx db/seed-demo.ts` in `apps/web/`), conditional on `db/seed-demo.ts` existing. Must be idempotent. See `docs/variants/default-nextjs.md` "Seed strategy".
 6. Build the Next.js app with OpenNext (`npm run build:open-next` in `apps/web/`). Env vars passed in: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `ALLOWED_ORIGINS`.
-7. Install CDK deps (`npm ci` in `infra/cdk/app/`).
+7. Install CDK deps (`npm ci` in the CDK dir (default `infra/cdk/_template`)).
 8. `cdk deploy --all` with the same env vars. CDK reads them at synth time and bakes them into the Lambda env.
 9. Read the deployed URL from `cdk-outputs.json`.
 10. Run `scripts/verify-deploy.sh` against that URL. Fails the workflow if any smoke check fails.

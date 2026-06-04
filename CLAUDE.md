@@ -64,7 +64,7 @@ The demo app at `apps/_demo/` exists to test the construct, not to ship features
 ## Stack conventions
 
 - Next.js (App Router) + TypeScript strict
-- Node 20+
+- Node 22+
 - Postgres (Neon for serverless connection pooling)
 - AWS Lambda + S3 + CloudFront via OpenNext
 - AWS CDK for IaC
@@ -109,7 +109,7 @@ All documented in `docs/DEPLOY.md`. Don't undo the fixes:
 1. Create your real app at `apps/web/` (or copy `apps/_demo/` and grow it). Leave `apps/_demo/` in place for CI's self-test.
 2. If scaffolding with `create-next-app`, overlay files from `apps/_template/`
 3. Rename `infra/cdk/_template/` to `infra/cdk/<your-app>/`, edit `bin/app.ts` stack id
-4. Configure GitHub secrets/vars per `docs/DEPLOY.md`, push, verify smoke test passes
+4. Run `npm run setup` (`scripts/connect.sh`) to wire the GitHub + AWS connection (OIDC role, database, secrets), or configure secrets/vars manually per `docs/SETUP.md`. Then push and verify the smoke test passes.
 5. Copy `apps/_template/specs/`, `apps/_template/tests/`, `apps/_template/vitest.config.ts`, `apps/_template/playwright.config.ts`, and `apps/_template/.github/workflows/test.yml` into the new app. Wire the spec-test ESLint rule into the app's flat config. See `docs/TESTING.md`.
 
 ## Spec-driven build protocol (mandatory)
