@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# connect.sh — one-command cloud setup for a repo cloned from this template.
+# connect.sh: one-command cloud setup for a repo cloned from this template.
 #
 # Wires the GitHub + AWS connection the deploy workflow needs, so that every
 # push then auto-builds, tests, and deploys to a live AWS URL with no stored

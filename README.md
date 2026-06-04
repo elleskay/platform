@@ -6,6 +6,8 @@
 
 **A reusable foundation for shipping Next.js apps to AWS serverless, fast and safely.** A TypeScript monorepo template, not a product: clone it per app and inherit a working CI/CD pipeline, infrastructure as code via AWS CDK, security scanning, OIDC-based deploys with zero stored credentials, a spec-driven test gate that blocks merges until every requirement is covered, and a deploy smoke test that catches the production failures this template already learned the hard way.
 
+**Built to pair with AI coding agents.** Point Claude Code or Codex at this repo and describe an app: it scaffolds from the template, builds, and ships. The agent conventions live in [CLAUDE.md](CLAUDE.md), and one command (`npm run setup`, see [`scripts/connect.sh`](scripts/connect.sh)) wires the GitHub + AWS connection so every push deploys to a live AWS URL with no stored keys.
+
 The owner's apps, [CoverLens](https://github.com/elleskay/insurance-dashboard), [Cancer Navigator](https://github.com/elleskay/cancer-navigator), and [Armoury](https://github.com/elleskay/armoury), are all cloned from it. The repo is its own proof: a real demo app at `apps/_demo/` is built and synthesised by the same workflow every cloned app inherits, so if the foundation breaks, CI fails here before any app picks it up.
 
 </div>
@@ -15,10 +17,10 @@ The owner's apps, [CoverLens](https://github.com/elleskay/insurance-dashboard), 
 - A NextjsServerless CDK construct: one call deploys a Next.js app as Lambda, S3, and CloudFront via OpenNext, auto-routing every `public/` asset to S3 and optionally attaching a custom domain.
 - Three GitHub Actions workflows: CI (lint, typecheck, demo build, CDK synth), security (CodeQL, secret scan, npm audit), and deploy (OIDC, build, CDK deploy, smoke test).
 - A spec-driven test system (`packages/spec-test`): write requirements in YAML first, then code and tests together, and CI refuses to merge below 100 percent requirement coverage.
-- A one-time setup stack that provisions a GitHub OIDC role so deploys carry no long-lived AWS keys.
+- A one-command setup (`npm run setup`, `scripts/connect.sh`) that wires the whole GitHub + AWS connection: it deploys the OIDC role, provisions a database, generates `AUTH_SECRET`, and sets every GitHub Actions secret and variable, so deploys carry no long-lived AWS keys.
 - A least-privilege IAM policy for the deploy role, so you never reach for AdministratorAccess.
 - Reference overlay files (auth, security headers, middleware, Sentry, PostHog, email, rate limiting) and a smoke-test script that runs nine checks against the live URL.
-- Twelve production gotchas already solved and documented in `docs/DEPLOY.md`, with each fix kept in place.
+- Every production gotcha already solved and documented in `docs/DEPLOY.md`, with each fix kept in place.
 
 ## Demo: the spec gate in action
 
@@ -257,7 +259,7 @@ The root has no app source, so `npm run typecheck` and `npm run lint` at the roo
 3. Set the GitHub secret `AWS_DEPLOY_ROLE_ARN` and the repo variables (region, app URL, allowed origins). Attach the IAM policy from `infra/iam/`.
 4. Push. `deploy.yml` builds with OpenNext, runs `cdk deploy`, and smoke-tests the live URL.
 
-Full step by step is in `docs/SETUP.md` and `docs/DEPLOY.md`. Serverless idle cost is roughly 0 to 2 USD per month. All twelve production gotchas (Server Actions `allowedOrigins`, the `AUTH_URL` redirect trap, client-side sign-out, build-before-synth ordering, synth-time env baking, and more) are documented in `docs/DEPLOY.md` with the fix kept in place so you do not relearn them.
+Full step by step is in `docs/SETUP.md` and `docs/DEPLOY.md`. Serverless idle cost is roughly 0 to 2 USD per month. Every production gotcha (Server Actions `allowedOrigins`, the `AUTH_URL` redirect trap, client-side sign-out, build-before-synth ordering, synth-time env baking, and more) are documented in `docs/DEPLOY.md` with the fix kept in place so you do not relearn them.
 
 ## Repository structure
 
