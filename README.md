@@ -1,10 +1,8 @@
 <div align="center">
 
-<img src="docs/banner.png" alt="platform: ship production-grade Next.js apps to AWS serverless" width="100%">
+<img src="docs/banner.png" alt="platform: ship production-grade Next.js apps to AWS, fast" width="100%">
 
-# Ship production-grade apps, fast.
-
-**Open-source Next.js and AWS template your AI coding agent can deploy to.** Point it at this repo, describe an idea, and it ships a real, live app, with no infrastructure to build.
+**Point your AI coding agent at this repo, describe an idea, and it ships a real, live app to AWS, with no infrastructure to build.**
 
 `Works with` &nbsp; **Claude Code** &nbsp;·&nbsp; **Codex** &nbsp;·&nbsp; **Cursor** &nbsp;·&nbsp; **Windsurf** &nbsp;·&nbsp; **Cline**
 
