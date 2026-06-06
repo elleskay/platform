@@ -46,7 +46,22 @@ cd ../..
 cp -r apps/_demo apps/web
 ```
 
-Then edit `apps/web/auth.ts` to swap the hardcoded `DEMO_USER` for your real provider, add a database, and add routes. The patterns are already in place.
+Then edit `apps/web/auth.ts` to swap the hardcoded `DEMO_USER` for your real provider, add a database, and add routes. The patterns are already in place. (Option A has no `auth.ts`; create one like `apps/_demo/auth.ts` only if you want credentials auth.)
+
+### Copy the spec-driven test scaffolding
+
+Every app on this platform is built and gated against a spec (see `docs/TESTING.md`). Option A apps must copy this scaffolding in; Option B apps already have it from `apps/_demo`.
+
+```bash
+cp -r apps/_template/specs apps/web/
+cp -r apps/_template/tests apps/web/
+cp apps/_template/vitest.config.ts apps/web/
+cp apps/_template/playwright.config.ts apps/web/
+mkdir -p apps/web/.github/workflows
+cp apps/_template/.github/workflows/test.yml apps/web/.github/workflows/
+```
+
+Then wire the spec-test ESLint rule into the app's flat config so a `specTest()` with no `expect()` fails lint. Without this scaffolding the coverage gate and `npm run test:spec` have nothing to run.
 
 ## 4. Configure CDK for the app
 

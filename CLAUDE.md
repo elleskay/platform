@@ -18,8 +18,9 @@ apps/
 │       ├── PostHogProvider.tsx      # Analytics + flags (no-ops without key)
 │       ├── Toaster.tsx              # Sonner toast root
 │       └── forms-README.md          # Documents RHF vs server-action forms
-└── _demo/                           # Working demo app. Platform CI builds this and synths
-                                     # the CDK construct against it.
+└── _demo/                           # Working demo app. Platform CI builds this, synths the
+                                     # CDK construct against it, and runs the spec gate
+                                     # against its own spec (dogfoods spec-test).
 
 infra/
 ├── cdk/_template/                   # Full CDK package. Copy and rename per app.
@@ -103,6 +104,7 @@ All documented in `docs/DEPLOY.md`. Don't undo the fixes:
 10. **`public/` files are auto-routed to S3** by the construct (it scans `.open-next/assets` at synth). A root `public/` file like `robots.txt` would otherwise 404 via the server Lambda. Bundled assets (e.g. a pdf.js worker) should use `new URL("pkg/worker.mjs", import.meta.url)` to land under `/_next/static`. See `docs/DEPLOY.md` #12.
 11. **App-specific runtime secrets (e.g. an AI key) must be wired in two places**: the app's CDK `web-stack.ts` `environment` AND the deploy workflow's CDK-deploy step. A GitHub secret nothing forwards never reaches the Lambda (env is baked at synth, #5). The smoke test also adapts to non-auth apps. See `docs/DEPLOY.md` #13.
 12. **Slow routes are killed at 30s** (server Lambda + CloudFront origin read timeout both default to 30s; a route `maxDuration` is only a hint). For AI/long-running routes pass `serverTimeoutSeconds` (up to 60) to the `NextjsServerless` construct, which raises both. See `docs/DEPLOY.md` #14.
+13. **First deploy can stall on the S3 asset upload.** `BucketDeployment`'s uploader Lambda defaults to 128 MB, which is bandwidth-starved for a Next.js asset bundle (hundreds of small chunks) and can crawl or time out. The construct now sets `memoryLimit: 1536` on `AssetsDeployment`. See `docs/DEPLOY.md` #15.
 
 ## When adding a new app to a cloned repo
 
@@ -111,6 +113,8 @@ All documented in `docs/DEPLOY.md`. Don't undo the fixes:
 3. Rename `infra/cdk/_template/` to `infra/cdk/<your-app>/`, edit `bin/app.ts` stack id
 4. Run `npm run setup` (`scripts/connect.sh`) to wire the GitHub + AWS connection (OIDC role, database, secrets), or configure secrets/vars manually per `docs/SETUP.md`. Then push and verify the smoke test passes.
 5. Copy `apps/_template/specs/`, `apps/_template/tests/`, `apps/_template/vitest.config.ts`, `apps/_template/playwright.config.ts`, and `apps/_template/.github/workflows/test.yml` into the new app. Wire the spec-test ESLint rule into the app's flat config. See `docs/TESTING.md`.
+
+**Connecting is agent-guided; don't make the user figure it out.** `connect.sh` does the deterministic AWS/GitHub wiring, but the database and any interactive logins are the user's to provide. Before running `npm run setup`, settle the database with them: a Neon account (then `neonctl auth`), a Neon API key (`NEON_API_KEY`), or an existing Postgres URL (`--database-url`). If the script reports neonctl is installed but not logged in, it now fails fast on purpose, walk the user through one of those options rather than relaying the raw error. Use `scripts/connect.sh --dry-run` to preview without changing anything.
 
 ## Spec-driven build protocol (mandatory)
 

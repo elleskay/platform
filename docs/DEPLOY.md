@@ -235,6 +235,28 @@ new NextjsServerless(this, "Web", {
 
 For work that genuinely needs longer than 60s, move it off the request path (a queue/async job) rather than holding the HTTP connection open.
 
+### 15. First deploy stalls (or times out) on the S3 asset upload
+
+**Symptom:** CloudFront finishes, but the stack sits in `CREATE_IN_PROGRESS` for 15+ minutes on `AssetsDeployment` (`Custom::CDKBucketDeployment`). The deployment Lambda logs show the upload crawling at tens of KiB/s, and it can eventually time out and roll back.
+
+**Cause:** `BucketDeployment` defaults its uploader Lambda to **128 MB**, and Lambda network bandwidth scales with memory. A Next.js build is hundreds of small chunk files, and at 128 MB the copy is too slow to finish inside the Lambda timeout.
+
+**Fix:** The construct now sets `memoryLimit: 1536` on `AssetsDeployment`, so the upload finishes in a minute or two. If you ever hit this on an already-running deploy, bump the live function in place and let the retry pick it up, no full redeploy needed:
+
+```bash
+aws lambda update-function-configuration \
+  --function-name <stack>-CustomCDKBucketDeployment... \
+  --memory-size 1536
+```
+
+### 16. Writing to the Lambda filesystem 500s in production
+
+**Symptom:** A feature that writes a file works locally but returns a 500 in production. The Lambda logs show `EROFS: read-only file system` or `EACCES`.
+
+**Cause:** The Lambda filesystem is read-only except for `/tmp`, and `/tmp` is per-instance and ephemeral, so it is not shared across concurrent invocations and is wiped when the instance recycles. Any runtime write to the bundle directory (for example a JSON "database", an upload cache, or a queue file) fails.
+
+**Fix:** Do not persist runtime state on the Lambda filesystem. Use a durable store: S3 for blobs or simple records, or the app's database for structured data. A useful pattern for small queues is one S3 object per item (avoids concurrent writers racing on a shared file). Provision the bucket in your stack and `grantReadWrite` it to `web.serverFunction`. Keep a file-backed fallback only for local dev and tests, selected at runtime by an env var. Use `/tmp` solely for throwaway scratch within a single request.
+
 ## Environments
 
 Default: `production`. Add `staging` by:
