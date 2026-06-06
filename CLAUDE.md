@@ -18,8 +18,9 @@ apps/
 │       ├── PostHogProvider.tsx      # Analytics + flags (no-ops without key)
 │       ├── Toaster.tsx              # Sonner toast root
 │       └── forms-README.md          # Documents RHF vs server-action forms
-└── _demo/                           # Working demo app. Platform CI builds this and synths
-                                     # the CDK construct against it.
+└── _demo/                           # Working demo app. Platform CI builds this, synths the
+                                     # CDK construct against it, and runs the spec gate
+                                     # against its own spec (dogfoods spec-test).
 
 infra/
 ├── cdk/_template/                   # Full CDK package. Copy and rename per app.
