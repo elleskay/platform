@@ -235,6 +235,20 @@ new NextjsServerless(this, "Web", {
 
 For work that genuinely needs longer than 60s, move it off the request path (a queue/async job) rather than holding the HTTP connection open.
 
+### 15. First deploy stalls (or times out) on the S3 asset upload
+
+**Symptom:** CloudFront finishes, but the stack sits in `CREATE_IN_PROGRESS` for 15+ minutes on `AssetsDeployment` (`Custom::CDKBucketDeployment`). The deployment Lambda logs show the upload crawling at tens of KiB/s, and it can eventually time out and roll back.
+
+**Cause:** `BucketDeployment` defaults its uploader Lambda to **128 MB**, and Lambda network bandwidth scales with memory. A Next.js build is hundreds of small chunk files, and at 128 MB the copy is too slow to finish inside the Lambda timeout.
+
+**Fix:** The construct now sets `memoryLimit: 1536` on `AssetsDeployment`, so the upload finishes in a minute or two. If you ever hit this on an already-running deploy, bump the live function in place and let the retry pick it up, no full redeploy needed:
+
+```bash
+aws lambda update-function-configuration \
+  --function-name <stack>-CustomCDKBucketDeployment... \
+  --memory-size 1536
+```
+
 ## Environments
 
 Default: `production`. Add `staging` by:
