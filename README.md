@@ -14,15 +14,16 @@ Clone it per app and inherit a working CI/CD pipeline, infrastructure as code vi
 
 ## See it live
 
-Three real apps, all cloned from this template, all on real auth, real data, and a real AWS deploy:
+Real apps cloned from this template, on real auth, real data, and a real AWS deploy:
 
 | App | What it is | Live | Source |
 |---|---|---|---|
 | **CoverLens** | AI insurance policy checker (grounded LangGraph extraction) | [open](https://d33z7oya883ugt.cloudfront.net) | [repo](https://github.com/elleskay/insurance-dashboard) |
+| **IRAS Tax Assistant** | Conversational SG tax help (GST, income, corporate, SRS) with multi-model routing | [open](https://d1yl1box414d2i.cloudfront.net) | [repo](https://github.com/elleskay/iras-tax-assistant) |
 | **Cancer Navigator** | Roadmap + subsidy coverage for newly diagnosed patients (SG) | [open](https://d1z96o21m62u9i.cloudfront.net) | [repo](https://github.com/elleskay/cancer-navigator) |
 | **Armoury** | Equipment checklists for frontline agencies, with an HQ dashboard | [open](https://d6a3alh51t58d.cloudfront.net) | [repo](https://github.com/elleskay/armoury) |
 
-Building a mobile app instead? See the sibling [**mobile-platform**](https://github.com/elleskay/mobile-platform) template (Expo + NestJS on AWS).
+The full showcase, including the mobile apps, is on the [**live site**](https://elleskay.github.io/platform-site/). Building mobile? See the sibling [**mobile-platform**](https://github.com/elleskay/mobile-platform) template (Expo + NestJS on AWS).
 
 ## Built to pair with an AI coding agent
 
