@@ -1,16 +1,22 @@
 <div align="center">
 
-<img src="docs/banner.png" alt="platform: clone it, ship Next.js apps to AWS serverless on day one" width="100%">
+<img src="docs/banner.png" alt="platform: ship production-grade Next.js apps to AWS serverless" width="100%">
+
+# Ship production-grade apps, fast.
+
+**Open-source Next.js and AWS template your AI coding agent can deploy to.** Point it at this repo, describe an idea, and it ships a real, live app, with no infrastructure to build.
+
+`Works with` &nbsp; **Claude Code** &nbsp;·&nbsp; **Codex** &nbsp;·&nbsp; **Cursor** &nbsp;·&nbsp; **Windsurf** &nbsp;·&nbsp; **Cline**
 
 [![CI](https://github.com/elleskay/platform/actions/workflows/ci.yml/badge.svg)](https://github.com/elleskay/platform/actions/workflows/ci.yml) &nbsp;[![Security](https://github.com/elleskay/platform/actions/workflows/security.yml/badge.svg)](https://github.com/elleskay/platform/actions/workflows/security.yml) &nbsp;![IaC](https://img.shields.io/badge/IaC-AWS%20CDK%20%2B%20OpenNext-4F46E5) &nbsp;![deploys](https://img.shields.io/badge/deploys-OIDC%2C%20no%20stored%20keys-06B6D4) &nbsp;[![license](https://img.shields.io/badge/license-MIT-64748B)](LICENSE)
 
-**Open-source template for shipping production-grade Next.js apps to AWS serverless, fast, with an AI coding agent or by hand.**
+### [Live demos and the full story: elleskay.github.io/platform-site](https://elleskay.github.io/platform-site/)
 
-Clone it per app and inherit a working CI/CD pipeline, infrastructure as code via AWS CDK, security scanning, OIDC deploys with zero stored credentials, a spec-driven test gate that blocks merges until every requirement is covered, and a deploy smoke test that catches the production failures this template already learned the hard way.
-
-### [See it live and read the full story: elleskay.github.io/platform-site](https://elleskay.github.io/platform-site/)
+`100% spec coverage` &nbsp;·&nbsp; `0 stored keys` &nbsp;·&nbsp; `9 smoke checks` &nbsp;·&nbsp; `MIT`
 
 </div>
+
+Clone it per app and inherit a working CI/CD pipeline, infrastructure as code via AWS CDK, security scanning, OIDC deploys with zero stored credentials, a spec-driven test gate that blocks merges until every requirement is covered, and a deploy smoke test that catches the production failures this template already learned the hard way.
 
 ## See it live
 
