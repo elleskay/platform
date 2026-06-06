@@ -113,6 +113,8 @@ All documented in `docs/DEPLOY.md`. Don't undo the fixes:
 4. Run `npm run setup` (`scripts/connect.sh`) to wire the GitHub + AWS connection (OIDC role, database, secrets), or configure secrets/vars manually per `docs/SETUP.md`. Then push and verify the smoke test passes.
 5. Copy `apps/_template/specs/`, `apps/_template/tests/`, `apps/_template/vitest.config.ts`, `apps/_template/playwright.config.ts`, and `apps/_template/.github/workflows/test.yml` into the new app. Wire the spec-test ESLint rule into the app's flat config. See `docs/TESTING.md`.
 
+**Connecting is agent-guided; don't make the user figure it out.** `connect.sh` does the deterministic AWS/GitHub wiring, but the database and any interactive logins are the user's to provide. Before running `npm run setup`, settle the database with them: a Neon account (then `neonctl auth`), a Neon API key (`NEON_API_KEY`), or an existing Postgres URL (`--database-url`). If the script reports neonctl is installed but not logged in, it now fails fast on purpose, walk the user through one of those options rather than relaying the raw error. Use `scripts/connect.sh --dry-run` to preview without changing anything.
+
 ## Spec-driven build protocol (mandatory)
 
 Every app on this platform is built from a spec and tested against that spec. The full system is documented in `docs/TESTING.md`. The agent protocol below is mandatory whenever you are building or extending an app.
