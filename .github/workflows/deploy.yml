@@ -8,6 +8,7 @@ on:
     paths-ignore:
       - "**.md"
       - "docs/**"
+      - "LICENSE"
   workflow_dispatch:
     inputs:
       environment:
@@ -77,6 +78,15 @@ jobs:
 
       - name: Install workspace dependencies
         run: npm ci
+
+      # Build @platform/spec-test before any next build. Apps built per the
+      # spec-driven protocol have tests/ that import @platform/spec-test, which
+      # next build typechecks. The package's dist is gitignored and npm does
+      # not run a workspace package's prepare hook on npm ci, so without this
+      # the OpenNext build fails with "Cannot find module '@platform/spec-test'".
+      - name: Build @platform/spec-test (dist is gitignored)
+        working-directory: packages/spec-test
+        run: npm run build
 
       # Apply DB migrations before the new Lambda code (which may reference
       # new columns/tables) goes live. If the app does not use Drizzle, the
