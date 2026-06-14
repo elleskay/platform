@@ -53,21 +53,26 @@ The pieces of the framework, no app code.
 
 ### API or System Interface
 
-The framework's surface is a construct, a test gate, and a few commands.
+The framework's surface is a construct, a test gate, and a few commands, not an HTTP API.
+
+The construct is the deploy surface. One call takes an OpenNext build and stands up the whole serverless stack: a CloudFront distribution out front, a streaming server Lambda for the app, an image-optimization Lambda, and an S3 bucket for static assets. You pass the app path and environment, and optionally a custom domain or a longer server timeout for slow AI routes, and it wires the rest.
 
 ```
-The construct (one call deploys the app)
-  new NextjsServerless(stack, "Web", { openNextPath, customDomain?, serverTimeoutSeconds? })
-    wires CloudFront, a streaming server Lambda, an image Lambda, and an S3 assets bucket
+new NextjsServerless(stack, "Web", { appPath, environment, customDomain?, serverTimeoutSeconds? }) -> Construct
+```
 
-The spec gate
-  specTest("APP-DOMAIN-NNN", title, fn, { category })   bind a test to a requirement
-  spec-coverage --spec specs/{app}.yml                  the gate, exits nonzero below 100 percent
-  (an ESLint rule fails any specTest whose body never calls expect)
+The spec gate is how requirements stay honest. specTest binds each test to a requirement ID from the app's spec, and spec-coverage checks that every requirement has a passing bound test, exiting nonzero (failing the build) the moment coverage drops below 100 percent. A companion ESLint rule rejects any specTest whose body never calls expect, so a test cannot be a green checkbox with no assertion.
 
-Setup and CI
-  npm run setup            wire GitHub and AWS (OIDC role, database, secrets), idempotent, --dry-run
-  npm run test:spec        build, unit, e2e, coverage gate
+```
+specTest("APP-DOMAIN-NNN", title, fn, { category })  -> bound test   bind a test to a requirement
+spec-coverage --spec specs/{app}.yml                 -> exit code    the gate, nonzero below 100 percent
+```
+
+Setup and CI run through two commands. npm run setup wires the cloud connection keyless, provisioning the GitHub OIDC role, the database, and every secret so deploys need no long-lived credentials, and it is idempotent with a dry run. npm run test:spec is the local mirror of CI, running the build, unit tests, e2e tests, and the coverage gate in one shot.
+
+```
+npm run setup      -> wires GitHub and AWS (OIDC role, database, secrets), idempotent, --dry-run
+npm run test:spec  -> build, unit, e2e, and the coverage gate
 ```
 
 ---
@@ -81,16 +86,26 @@ We build the design one functional requirement at a time.
 You clone the template, the agent builds the app at apps/web, renames the CDK package, runs one setup command, and pushes. The push runs the gate and, if green, deploys to a live URL and smoke-tests it.
 
 ```mermaid
-flowchart TD
-  Clone[Clone the template] --> Build[Agent builds the app at apps/web]
-  Build --> Rename[Rename infra/cdk to the app]
-  Rename --> Setup[npm run setup, wires GitHub and AWS]
-  Setup --> Push[git push to main]
-  Push --> Gate{Spec gate and security pass?}
-  Gate -->|no| Block[Merge or deploy blocked]
-  Gate -->|yes| Deploy[OpenNext build, CDK deploy over OIDC]
-  Deploy --> Smoke[Smoke test the live URL]
-  Smoke --> Live[Live on CloudFront]
+flowchart LR
+  Clone["Clone the template"]
+  Build["AI coding agent<br/>- builds the app at apps/web"]
+  Rename["Rename infra/cdk to the app"]
+  Setup["npm run setup<br/>- wires GitHub and AWS"]
+  Push["git push to main"]
+  Gate{"Spec gate and security pass?"}
+  Block["Merge or deploy blocked"]
+  Deploy["OpenNext build, CDK deploy over OIDC"]
+  Smoke["Smoke test the live URL"]
+  Live["Live on CloudFront"]
+  Clone --> Build
+  Build --> Rename
+  Rename -->|"npm run setup"| Setup
+  Setup -->|"git push"| Push
+  Push -->|"gate + security"| Gate
+  Gate -->|"no"| Block
+  Gate -->|"yes"| Deploy
+  Deploy -->|"deploy over OIDC"| Smoke
+  Smoke --> Live
 ```
 
 ### 2) The cloud connection is wired keyless, in one command
@@ -102,12 +117,18 @@ flowchart TD
 The NextjsServerless construct turns an OpenNext build into CloudFront plus a streaming server Lambda, an image Lambda, and an S3 assets bucket, auto-routing every public asset to S3 and optionally attaching a custom domain.
 
 ```mermaid
-flowchart TD
-  U[Browser] --> CF[CloudFront distribution]
-  CF --> SRV[Server Lambda, OpenNext, response streaming]
-  CF --> IMG[Image optimization Lambda]
-  CF --> S3[(S3 assets bucket, public and _next static)]
-  SRV --> NEON[(Neon Postgres, per app)]
+flowchart LR
+  U["Browser"]
+  CF["CloudFront distribution"]
+  SRV["Server Lambda<br/>- OpenNext, response streaming"]
+  IMG["Image optimization Lambda"]
+  S3[("S3 assets bucket, public and _next static")]
+  NEON[("Neon Postgres, per app")]
+  U --> CF
+  CF --> SRV
+  CF --> IMG
+  CF --> S3
+  SRV --> NEON
 ```
 
 ### 4) The spec gate blocks untested merges
@@ -120,23 +141,62 @@ The security workflow runs CodeQL, secret scanning, and dependency audit. The de
 
 ### The framework, grouped
 
+A template is a set of pillars, not a runtime that grows on a request path, so the build-up here is the pillars being assembled. First, what ships an app: the overlays and the infrastructure.
+
 ```mermaid
-flowchart TD
-  P[platform template] --> APPS[App overlays]
-  P --> INFRA[Infrastructure as code]
-  P --> CI[GitHub Actions workflows]
-  P --> SPEC[Spec-driven test gate]
-  APPS --> T[apps/_template overlay files]
-  APPS --> D[apps/_demo self-test app]
-  INFRA --> C[NextjsServerless construct]
-  INFRA --> S[_setup OIDC role stack]
-  INFRA --> IAM[Least-privilege IAM policy]
-  CI --> CIW[ci.yml lint, build, synth, gate]
-  CI --> SECW[security.yml CodeQL, secrets, audit]
-  CI --> DEPW[deploy.yml OIDC, build, deploy, smoke]
-  SPEC --> RUN[specTest runner]
-  SPEC --> GATE[Coverage gate, 100 percent]
-  SPEC --> RULE[ESLint no-empty-assertion rule]
+flowchart LR
+  P["platform template"]
+  APPS["App overlays"]
+  INFRA["Infrastructure as code"]
+  T["apps/_template overlay files"]
+  D["apps/_demo self-test app"]
+  C["NextjsServerless construct"]
+  S["_setup OIDC role stack"]
+  IAM["Least-privilege IAM policy"]
+  P --> APPS
+  P --> INFRA
+  APPS --> T
+  APPS --> D
+  INFRA --> C
+  INFRA --> S
+  INFRA --> IAM
+```
+
+Then what proves it: the CI workflows and the spec gate. That completes the framework.
+
+```mermaid
+flowchart LR
+  P["platform template"]
+  APPS["App overlays"]
+  INFRA["Infrastructure as code"]
+  CI["GitHub Actions workflows"]
+  SPEC["Spec-driven test gate"]
+  T["apps/_template overlay files"]
+  D["apps/_demo self-test app"]
+  C["NextjsServerless construct"]
+  S["_setup OIDC role stack"]
+  IAM["Least-privilege IAM policy"]
+  CIW["ci.yml lint, build, synth, gate"]
+  SECW["security.yml CodeQL, secrets, audit"]
+  DEPW["deploy.yml OIDC, build, deploy, smoke"]
+  RUN["specTest runner"]
+  GATE["Coverage gate, 100 percent"]
+  RULE["ESLint no-empty-assertion rule"]
+  P --> APPS
+  P --> INFRA
+  P --> CI
+  P --> SPEC
+  APPS --> T
+  APPS --> D
+  INFRA --> C
+  INFRA --> S
+  INFRA --> IAM
+  CI --> CIW
+  CI --> SECW
+  CI --> DEPW
+  SPEC --> RUN
+  SPEC --> GATE
+  SPEC --> RULE
 ```
 
 ---
@@ -254,6 +314,29 @@ One command ensures each piece, the OIDC provider, the least-privilege role, the
 </details>
 
 ---
+
+## The complete design
+
+Pulling the deep dives together, here is the production system a platform app ships into, and the pipeline that puts it there.
+
+```mermaid
+flowchart LR
+  Agent["AI coding agent"]
+  GH["GitHub Actions<br/>- gate<br/>- security<br/>- OIDC deploy"]
+  CF["CloudFront"]
+  SRV["Server Lambda<br/>- OpenNext, streaming"]
+  IMG["Image Lambda"]
+  S3[("S3 assets")]
+  Neon[("Neon Postgres")]
+  Browser["Browser"]
+  Browser --> CF
+  CF --> SRV
+  CF --> IMG
+  CF --> S3
+  SRV --> Neon
+  Agent -->|"gate + security"| GH
+  GH -->|"deploy over OIDC"| SRV
+```
 
 ## Tech stack
 
