@@ -83,7 +83,7 @@ We build the design one functional requirement at a time.
 
 ### 1) An agent scaffolds an app and ships it
 
-You clone the template, the agent builds the app at apps/web, renames the CDK package, runs one setup command, and pushes. The push runs the gate and, if green, deploys to a live URL and smoke-tests it.
+You clone the template, the agent builds the app at apps/web, renames the CDK package, runs one setup command, and pushes. The PR runs the gate, branch protection blocks a red merge, and the merge to main deploys to a live URL and smoke-tests it.
 
 ```mermaid
 flowchart LR

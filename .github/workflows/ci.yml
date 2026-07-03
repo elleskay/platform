@@ -61,6 +61,35 @@ jobs:
               - '!**/*.svg'
               - '!**/*.ico'
 
+  commitlint:
+    name: Commitlint (PR title + commits)
+    # Squash merges land the PR title as the commit subject on main, so lint
+    # the title as well as the branch commits. PRs only: by the time CI sees a
+    # direct push, the message has already landed.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history so the base..head commit range is resolvable.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Lint PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | npx commitlint
+      - name: Lint branch commits
+        env:
+          FROM: ${{ github.event.pull_request.base.sha }}
+          TO: ${{ github.event.pull_request.head.sha }}
+        run: npx commitlint --from "$FROM" --to "$TO"
+
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest

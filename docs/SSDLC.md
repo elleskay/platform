@@ -11,7 +11,7 @@ What this template gives you out of the box, and what each app is expected to ma
 | Secret scanning | GitHub native + gitleaks workflow |
 | `npm audit` on CI | `.github/workflows/security.yml` |
 | Branch protection | manual GitHub setting (see SETUP.md) |
-| Conventional commits | `commitlint.config.mjs` |
+| Conventional commits | `commitlint.config.mjs`, enforced on PRs by the ci.yml commitlint job |
 | PR template with security checkbox | `.github/pull_request_template.md` |
 | Disclosure policy | `SECURITY.md` |
 
