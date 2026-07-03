@@ -1,9 +1,8 @@
 import { test, expect, afterEach, type TestContext } from "vitest";
 import { recordCoverage } from "./coverage.js";
+import { TITLE_SPEC_ID_RE } from "./spec-id.js";
 
 export { test, expect };
-
-const SPEC_ID_RE = /^\[([A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)+-\d{3,})\]/;
 
 // Spec category per id, populated by specTest() at collection time and read by
 // the afterEach recorder at run time so the coverage report can detect a test
@@ -18,7 +17,7 @@ const categoryById = new Map<string, string>();
 export function setupSpecCoverage(): void {
   afterEach((ctx) => {
     const taskName = ctx.task?.name ?? "";
-    const m = SPEC_ID_RE.exec(taskName);
+    const m = TITLE_SPEC_ID_RE.exec(taskName);
     if (!m) return;
     const id = m[1] as string;
     const failed = !!ctx.task?.result?.errors?.length;

@@ -1,4 +1,4 @@
-# apps/_template — reference overlay files
+# apps/_template: reference overlay files
 
 Files you copy into a new app on first scaffold. They encode the production patterns this platform discovered the hard way.
 
@@ -54,10 +54,10 @@ Then write your own `auth.ts` that imports `auth.config.ts` and adds the provide
 
 ## What this template does NOT include
 
-- Auth providers — your app picks
-- Database schema or ORM — your app picks
-- UI components beyond signout + toast root — your app picks
-- React Hook Form — see `components/forms-README.md` for the trade-off; install per app
-- Page layouts and routes — your app picks
+- Auth providers: your app picks
+- Database schema or ORM: your app picks
+- UI components beyond signout + toast root: your app picks
+- React Hook Form: see `components/forms-README.md` for the trade-off; install per app
+- Page layouts and routes: your app picks
 
 This is the minimal shell + universal infrastructure. Everything else is product code.

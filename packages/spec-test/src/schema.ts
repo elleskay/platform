@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BARE_SPEC_ID_RE } from "./spec-id.js";
 
 export const RequirementCategory = z.enum([
   "functional",
@@ -15,14 +16,12 @@ export const RequirementSeverity = z.enum([
   "low",
 ]);
 
-const requirementIdPattern = /^[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+-\d{3,}$/;
-
 export const Requirement = z
   .object({
     id: z
       .string()
       .regex(
-        requirementIdPattern,
+        BARE_SPEC_ID_RE,
         "id must look like APP-DOMAIN-001 (uppercase letters/digits, hyphens, 3+ digit suffix)",
       ),
     title: z.string().min(5).max(200),
@@ -32,7 +31,7 @@ export const Requirement = z
     when: z.string().min(3),
     then: z.string().min(3),
     tags: z.array(z.string().min(1)).default([]),
-    depends_on: z.array(z.string().regex(requirementIdPattern)).default([]),
+    depends_on: z.array(z.string().regex(BARE_SPEC_ID_RE)).default([]),
     notes: z.string().optional(),
   })
   .strict();

@@ -11,7 +11,7 @@ What this template gives you out of the box, and what each app is expected to ma
 | Secret scanning | GitHub native + gitleaks workflow |
 | `npm audit` on CI | `.github/workflows/security.yml` |
 | Branch protection | manual GitHub setting (see SETUP.md) |
-| Conventional commits | `commitlint.config.mjs` |
+| Conventional commits | `commitlint.config.mjs`, enforced on PRs by the ci.yml commitlint job |
 | PR template with security checkbox | `.github/pull_request_template.md` |
 | Disclosure policy | `SECURITY.md` |
 
@@ -26,7 +26,7 @@ What this template gives you out of the box, and what each app is expected to ma
 | Rate limiting | Upstash Redis on auth and sensitive routes |
 | CSRF protection | Next.js Server Actions `allowedOrigins` (see `docs/DEPLOY.md` gotcha #1) |
 | HTTPS only | Enforced via CloudFront |
-| Secrets in prod | AWS Secrets Manager, never env files |
+| Secrets in prod | GitHub Actions secrets, baked into Lambda env at deploy (see `docs/DEPLOY.md` gotcha #4); never commit env files |
 | Error tracking | Sentry (catches unhandled exceptions that may leak info) |
 | Logging | Structured JSON logs, no PII, no secrets |
 | Database access | Parameterized queries only (ORM enforces this) |
@@ -47,7 +47,7 @@ If a vulnerability is found:
 
 1. Acknowledge to reporter within 72 hours
 2. Patch in a private branch
-3. Rotate any leaked secrets via AWS Secrets Manager
+3. Rotate any leaked secrets (GitHub Actions secrets, database credentials, `AUTH_SECRET`), then redeploy so the Lambda env picks up the new values
 4. Deploy fix
 5. Disclose publicly after patch is live
 

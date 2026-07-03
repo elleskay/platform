@@ -16,11 +16,8 @@ export interface CoverageEntry {
   timestamp: string;
 }
 
-const DEFAULT_PATH =
-  process.env.SPEC_COVERAGE_FILE ?? ".spec-coverage/results.jsonl";
-
 export function getCoveragePath(): string {
-  return DEFAULT_PATH;
+  return process.env.SPEC_COVERAGE_FILE ?? ".spec-coverage/results.jsonl";
 }
 
 export function recordCoverage(entry: Omit<CoverageEntry, "timestamp">): void {

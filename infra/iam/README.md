@@ -30,7 +30,7 @@ The first time you deploy from a fresh AWS account you reach for `AdministratorA
 
 ## What this does NOT cover
 
-- VPC, ECS, ECR-as-app-registry, RDS (those are for the Fargate path — fork the construct and the policy if you go there)
+- VPC, ECS, ECR-as-app-registry, RDS (those are for the Fargate path; fork the construct and the policy if you go there)
 - KMS custom keys
 - WAF, Shield Advanced
 - Cross-account deploys

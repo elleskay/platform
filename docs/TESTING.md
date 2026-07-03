@@ -84,7 +84,7 @@ The wrapper records `{id, status, category, file, durationMs}` to `.spec-coverag
 
 ## The ESLint rule
 
-`@platform/spec-test/eslintPlugin` exports a rule `require-expect-in-spec-test`. Wire it into your app's flat config:
+`@platform/spec-test` exports `eslintPlugin`, a plugin with the rule `require-expect-in-spec-test`. Wire it into your app's flat config:
 
 ```js
 // eslint.config.mjs
@@ -136,7 +136,7 @@ Copy `apps/_template/.github/workflows/test.yml` into your app's `.github/workfl
 - Unit + E2E + coverage gate
 - Coverage report uploaded as artifact + posted as PR comment
 
-Deploy must depend on this job (`needs: [spec]` in `deploy.yml`) so a failing spec gate blocks the deploy.
+Gate deploys through branch protection: require the `Spec coverage gate` check on `main` (SETUP.md step 2) so a red gate blocks the merge, and merge via PR. GitHub Actions cannot express `needs:` across workflow files, and `deploy.yml` triggers on push to `main`, so a direct push bypasses the gate; restrict direct pushes to `main` if that matters to you.
 
 ## Authoring workflow (agent + human)
 

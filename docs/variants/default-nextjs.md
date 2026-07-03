@@ -148,4 +148,4 @@ Fargate (ECS + ALB + RDS + NAT) costs ~$95/month idle. For a portfolio or low-tr
 
 ## Why not Vercel?
 
-Vercel is the obvious choice for serverless Next.js — and if your story is "I ship products on Vercel", use Vercel. This platform exists to show competence with AWS-native deploys (CDK, Lambda, CloudFront, IAM, OIDC) on top of the same Next.js code. Different goal.
+Vercel is the obvious choice for serverless Next.js, and if your story is "I ship products on Vercel", use Vercel. This platform exists to show competence with AWS-native deploys (CDK, Lambda, CloudFront, IAM, OIDC) on top of the same Next.js code. Different goal.

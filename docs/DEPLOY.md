@@ -119,7 +119,7 @@ These all bit us in production. The platform encodes the fixes; do not undo them
 
 **Symptom:** `ERROR Error: ENOENT: no such file or directory, mkdtemp 'C:\...\.open-next\image-optimization-functionXXXXXX'`.
 
-**Fix:** Build on Linux/macOS/WSL. If you must build on Windows and your app uses no `next/image`, the deploy still works — the image function bundle is incomplete but never invoked.
+**Fix:** Build on Linux/macOS/WSL. If you must build on Windows and your app uses no `next/image`, the deploy still works: the image function bundle is incomplete but never invoked.
 
 ### 6. `cdk bootstrap` fails if your stacks reference missing build assets
 
@@ -256,6 +256,23 @@ aws lambda update-function-configuration \
 **Cause:** The Lambda filesystem is read-only except for `/tmp`, and `/tmp` is per-instance and ephemeral, so it is not shared across concurrent invocations and is wiped when the instance recycles. Any runtime write to the bundle directory (for example a JSON "database", an upload cache, or a queue file) fails.
 
 **Fix:** Do not persist runtime state on the Lambda filesystem. Use a durable store: S3 for blobs or simple records, or the app's database for structured data. A useful pattern for small queues is one S3 object per item (avoids concurrent writers racing on a shared file). Provision the bucket in your stack and `grantReadWrite` it to `web.serverFunction`. Keep a file-backed fallback only for local dev and tests, selected at runtime by an env var. Use `/tmp` solely for throwaway scratch within a single request.
+
+### 17. `next build` fails on a package with inlined WASM (QuickJS sandbox)
+
+**Symptom:** `next build` fails with `SyntaxError: Octal escape sequences are not allowed in template strings` (or similar bundler parse errors) in a route that imports the package, e.g. `Failed to collect page data for /api/tools/run`.
+
+**Cause:** Turbopack tries to bundle a package whose JS module inlines the entire WASM binary as a string (e.g. `@jitl/quickjs-singlefile-cjs-release-sync`). The bundler cannot re-serialize that string safely.
+
+**Fix:** Mark the packages as external in `next.config.ts` so they load from `node_modules` at runtime (OpenNext traces and ships externals with the server function):
+
+```ts
+serverExternalPackages: [
+  "quickjs-emscripten-core",
+  "@jitl/quickjs-singlefile-cjs-release-sync",
+],
+```
+
+The singlefile variant is still the right choice for WASM-backed packages: there is no separate `.wasm` asset to route (see #12), and the same module works in vitest, `next start`, and on Lambda.
 
 ## Environments
 

@@ -6,31 +6,48 @@ on:
   push:
     branches: [main]
 
+# Read-only token for every job. Nothing in CI writes to the repo.
+# pull-requests: read is for dorny/paths-filter on pull_request events.
+permissions:
+  contents: read
+  pull-requests: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
 
 jobs:
   workflow-lint:
     name: Workflow lint (actionlint)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Run actionlint
-        uses: docker://rhysd/actionlint:latest
+        # Pinned version: `latest` would let a compromised image into CI
+        # unnoticed. Dependabot does not update docker:// refs, bump by hand.
+        uses: docker://rhysd/actionlint:1.7.12
         with:
           args: -color
 
   # Detect whether this change touches code. Docs/asset-only commits skip the
-  # expensive build, synth, and spec-test self-test jobs below. Typecheck/lint/
-  # test still run so the cheap checks stay green on every change.
+  # expensive build, synth, and spec-test self-test jobs below. Typecheck and
+  # lint still run so the cheap checks stay green on every change.
   changes:
     name: Detect code changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -44,40 +61,85 @@ jobs:
               - '!**/*.svg'
               - '!**/*.ico'
 
+  commitlint:
+    name: Commitlint (PR title + commits)
+    # Squash merges land the PR title as the commit subject on main, so lint
+    # the title as well as the branch commits. PRs only: by the time CI sees a
+    # direct push, the message has already landed.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history so the base..head commit range is resolvable.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Lint PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | npx commitlint
+      - name: Lint branch commits
+        env:
+          FROM: ${{ github.event.pull_request.base.sha }}
+          TO: ${{ github.event.pull_request.head.sha }}
+        run: npx commitlint --from "$FROM" --to "$TO"
+
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - run: npm run typecheck --if-present
+      # Demo tests import types from the package's gitignored dist, and npm ci
+      # does not run a workspace's prepare hook.
+      - name: Build @platform/spec-test (dist is gitignored)
+        run: npm run build --workspace packages/spec-test
+      - run: npm run typecheck
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - run: npm run lint --if-present
+      # The demo's flat config imports the spec-test plugin from dist.
+      - name: Build @platform/spec-test (dist is gitignored)
+        run: npm run build --workspace packages/spec-test
+      - run: npm run lint
 
   build:
     name: Build demo (Next.js + OpenNext)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [changes, typecheck, lint]
     if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
       - name: Cache Next.js build cache
@@ -87,13 +149,9 @@ jobs:
           key: nextjs-demo-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/_demo/**/*.[jt]s', 'apps/_demo/**/*.[jt]sx') }}
           restore-keys: |
             nextjs-demo-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
-      - name: Next.js build
-        working-directory: apps/_demo
-        env:
-          AUTH_SECRET: build-time-placeholder-not-used-at-runtime
-          ALLOWED_ORIGINS: "*.cloudfront.net"
-        run: npm run build
-      - name: OpenNext build
+      # open-next runs `next build` itself; a separate next build step here
+      # would build the app twice.
+      - name: OpenNext build (runs next build)
         working-directory: apps/_demo
         env:
           AUTH_SECRET: build-time-placeholder-not-used-at-runtime
@@ -111,23 +169,27 @@ jobs:
   cdk-synth:
     name: CDK synth (proves construct works against demo)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [changes, build]
     if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm ci
+          cache-dependency-path: infra/cdk/_template/package-lock.json
       - name: Download OpenNext output
         uses: actions/download-artifact@v8
         with:
           name: open-next-output
           path: apps/_demo/.open-next
+      # Synth only needs the CDK package's own dependencies, not the workspace.
       - name: Install CDK package deps
         working-directory: infra/cdk/_template
-        run: npm install
+        run: npm ci
       - name: cdk synth
         working-directory: infra/cdk/_template
         env:
@@ -137,35 +199,29 @@ jobs:
           AUTH_SECRET: placeholder
           AUTH_URL: https://placeholder.cloudfront.net
           PLATFORM_DEMO_APP_PATH: apps/_demo
-        run: npx cdk synth
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm test --if-present
+        run: npx cdk synth --quiet
 
   spec-test:
     name: spec-test (build + gate self-test)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: changes
     if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
       - name: Build @platform/spec-test
         working-directory: packages/spec-test
-        run: npx tsc
+        run: npm run build
+      - name: ESLint rule self-test (specTest without expect is flagged)
+        working-directory: packages/spec-test
+        run: node samples/eslint.test.mjs
       - name: Validate sample spec
         working-directory: packages/spec-test
         run: node dist/cli.js --spec samples/example.spec.yml --coverage samples/results-full.jsonl --out /tmp/sample-report.md
