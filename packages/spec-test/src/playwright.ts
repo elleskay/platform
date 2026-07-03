@@ -8,12 +8,11 @@ import {
   type TestInfo,
 } from "@playwright/test";
 import { recordCoverage } from "./coverage.js";
+import { TITLE_SPEC_ID_RE } from "./spec-id.js";
 
 type SpecTestFixtures = PlaywrightTestArgs &
   PlaywrightTestOptions & { specCoverage: void } & PlaywrightWorkerArgs &
   PlaywrightWorkerOptions;
-
-const SPEC_ID_RE = /^\[([A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)+-\d{3,})\]/;
 
 // Spec category per id, populated by specTest() at collection time and read by
 // the auto fixture at run time so the coverage report can detect a test
@@ -33,7 +32,7 @@ export const test = base.extend<{ specCoverage: void }>({
   specCoverage: [
     async ({}, use, testInfo) => {
       await use();
-      const m = SPEC_ID_RE.exec(testInfo.title);
+      const m = TITLE_SPEC_ID_RE.exec(testInfo.title);
       if (!m) return;
       const id = m[1] as string;
       const status: "passed" | "failed" =

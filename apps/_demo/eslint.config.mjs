@@ -1,3 +1,4 @@
+import tseslint from "typescript-eslint";
 import { eslintPlugin as specTest } from "@platform/spec-test";
 
 export default [
@@ -8,6 +9,7 @@ export default [
     // Every specTest() body must contain at least one expect(), so a test can't
     // pass as a no-op and silently satisfy the coverage gate.
     files: ["tests/**/*.spec.ts"],
+    languageOptions: { parser: tseslint.parser },
     plugins: { "spec-test": specTest },
     rules: { "spec-test/require-expect-in-spec-test": "error" },
   },

@@ -1,4 +1,4 @@
-import * as path from "path";
+import * as path from "node:path";
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { NextjsServerless } from "./constructs/NextjsServerless";

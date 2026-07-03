@@ -26,3 +26,8 @@ updates:
     directory: "/infra/cdk/_template"
     schedule:
       interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/infra/cdk/_setup"
+    schedule:
+      interval: "weekly"

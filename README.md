@@ -68,11 +68,11 @@ specTest("APP-DOMAIN-NNN", title, fn, { category })  -> bound test   bind a test
 spec-coverage --spec specs/{app}.yml                 -> exit code    the gate, nonzero below 100 percent
 ```
 
-Setup and CI run through two commands. npm run setup wires the cloud connection keyless, provisioning the GitHub OIDC role, the database, and every secret so deploys need no long-lived credentials, and it is idempotent with a dry run. npm run test:spec is the local mirror of CI, running the build, unit tests, e2e tests, and the coverage gate in one shot.
+Setup and CI run through two commands. npm run setup wires the cloud connection keyless, provisioning the GitHub OIDC role, the database, and every secret so deploys need no long-lived credentials, and it is idempotent with a dry run. npm run test:spec is the local mirror of CI, running lint, the unit tests, the e2e tests, and the coverage gate in one shot.
 
 ```
 npm run setup      -> wires GitHub and AWS (OIDC role, database, secrets), idempotent, --dry-run
-npm run test:spec  -> build, unit, e2e, and the coverage gate
+npm run test:spec  -> lint, unit, e2e, and the coverage gate
 ```
 
 ---
@@ -87,25 +87,11 @@ You clone the template, the agent builds the app at apps/web, renames the CDK pa
 
 ```mermaid
 flowchart LR
-  Clone["Clone the template"]
-  Build["AI coding agent<br/>- builds the app at apps/web"]
-  Rename["Rename infra/cdk to the app"]
-  Setup["npm run setup<br/>- wires GitHub and AWS"]
-  Push["git push to main"]
-  Gate{"Spec gate and security pass?"}
-  Block["Merge or deploy blocked"]
-  Deploy["OpenNext build, CDK deploy over OIDC"]
-  Smoke["Smoke test the live URL"]
-  Live["Live on CloudFront"]
-  Clone --> Build
-  Build --> Rename
-  Rename -->|"npm run setup"| Setup
-  Setup -->|"git push"| Push
-  Push -->|"gate + security"| Gate
-  Gate -->|"no"| Block
-  Gate -->|"yes"| Deploy
-  Deploy -->|"deploy over OIDC"| Smoke
-  Smoke --> Live
+  Agent["AI coding agent<br/>- builds app at apps/web"] -->|"npm run setup"| Setup["npm run setup<br/>- wires GitHub and AWS"]
+  Setup -->|"git push"| Push["git push to main"]
+  Push -->|"spec gate + security"| Gate["GitHub Actions<br/>- spec gate<br/>- security scan"]
+  Gate -->|"deploy over OIDC"| Deploy["CDK deploy over OIDC"]
+  Deploy -->|"live URL"| Live["Live on CloudFront"]
 ```
 
 ### 2) The cloud connection is wired keyless, in one command
@@ -118,17 +104,11 @@ The NextjsServerless construct turns an OpenNext build into CloudFront plus a st
 
 ```mermaid
 flowchart LR
-  U["Browser"]
-  CF["CloudFront distribution"]
-  SRV["Server Lambda<br/>- OpenNext, response streaming"]
-  IMG["Image optimization Lambda"]
-  S3[("S3 assets bucket, public and _next static")]
-  NEON[("Neon Postgres, per app")]
-  U --> CF
-  CF --> SRV
-  CF --> IMG
-  CF --> S3
-  SRV --> NEON
+  Browser["Browser"] -->|"GET /"| CF["CloudFront"]
+  CF -->|"dynamic"| SRV["Server Lambda<br/>- OpenNext, streaming<br/>- Node 22, ARM64"]
+  CF -->|"/_next/image"| IMG["Image Lambda"]
+  CF -->|"/_next/static"| S3[("S3 assets")]
+  SRV -->|"query"| Neon[("Neon Postgres")]
 ```
 
 ### 4) The spec gate blocks untested merges
@@ -145,58 +125,24 @@ A template is a set of pillars, not a runtime that grows on a request path, so t
 
 ```mermaid
 flowchart LR
-  P["platform template"]
-  APPS["App overlays"]
-  INFRA["Infrastructure as code"]
-  T["apps/_template overlay files"]
-  D["apps/_demo self-test app"]
-  C["NextjsServerless construct"]
-  S["_setup OIDC role stack"]
-  IAM["Least-privilege IAM policy"]
-  P --> APPS
-  P --> INFRA
-  APPS --> T
-  APPS --> D
-  INFRA --> C
-  INFRA --> S
-  INFRA --> IAM
+  P["platform template"] -->|"ships apps"| APPS["App overlays"]
+  P -->|"ships infra"| INFRA["Infrastructure as code"]
+  APPS -->|"reference files"| T["apps/_template overlays"]
+  APPS -->|"self-test app"| D["apps/_demo self-test app"]
+  INFRA -->|"deploy surface"| C["NextjsServerless construct"]
+  INFRA -->|"deploy role"| IAM["Least-privilege IAM policy"]
 ```
 
 Then what proves it: the CI workflows and the spec gate. That completes the framework.
 
 ```mermaid
 flowchart LR
-  P["platform template"]
-  APPS["App overlays"]
-  INFRA["Infrastructure as code"]
-  CI["GitHub Actions workflows"]
-  SPEC["Spec-driven test gate"]
-  T["apps/_template overlay files"]
-  D["apps/_demo self-test app"]
-  C["NextjsServerless construct"]
-  S["_setup OIDC role stack"]
-  IAM["Least-privilege IAM policy"]
-  CIW["ci.yml lint, build, synth, gate"]
-  SECW["security.yml CodeQL, secrets, audit"]
-  DEPW["deploy.yml OIDC, build, deploy, smoke"]
-  RUN["specTest runner"]
-  GATE["Coverage gate, 100 percent"]
-  RULE["ESLint no-empty-assertion rule"]
-  P --> APPS
-  P --> INFRA
-  P --> CI
-  P --> SPEC
-  APPS --> T
-  APPS --> D
-  INFRA --> C
-  INFRA --> S
-  INFRA --> IAM
-  CI --> CIW
-  CI --> SECW
-  CI --> DEPW
-  SPEC --> RUN
-  SPEC --> GATE
-  SPEC --> RULE
+  P["platform template"] -->|"proves via CI"| CI["GitHub Actions workflows"]
+  P -->|"proves via gate"| SPEC["Spec-driven test gate"]
+  CI -->|"on push"| CIW["ci.yml<br/>- lint, build, synth, gate"]
+  CI -->|"on push"| SECW["security.yml<br/>- CodeQL, secrets, audit"]
+  CI -->|"on push to main"| DEPW["deploy.yml<br/>- OIDC, build, deploy, smoke"]
+  SPEC -->|"enforces"| GATE["Coverage gate, 100 percent"]
 ```
 
 ---
@@ -321,21 +267,14 @@ Pulling the deep dives together, here is the production system a platform app sh
 
 ```mermaid
 flowchart LR
-  Agent["AI coding agent"]
-  GH["GitHub Actions<br/>- gate<br/>- security<br/>- OIDC deploy"]
-  CF["CloudFront"]
-  SRV["Server Lambda<br/>- OpenNext, streaming"]
-  IMG["Image Lambda"]
-  S3[("S3 assets")]
-  Neon[("Neon Postgres")]
-  Browser["Browser"]
-  Browser --> CF
-  CF --> SRV
-  CF --> IMG
-  CF --> S3
-  SRV --> Neon
-  Agent -->|"gate + security"| GH
-  GH -->|"deploy over OIDC"| SRV
+  Push["git push to main"] -->|"spec gate + security"| GA["GitHub Actions<br/>- spec gate<br/>- security scan"]
+  GA -->|"CDK deploy over OIDC"| CF["CloudFront"]
+  GA -.->|"smoke test"| CF
+  Browser["Browser"] -->|"GET /"| CF
+  CF -->|"dynamic"| SRV["Server Lambda<br/>- OpenNext, streaming<br/>- Node 22, ARM64"]
+  CF -->|"/_next/image"| IMG["Image Lambda"]
+  CF -->|"/_next/static"| S3[("S3 assets")]
+  SRV -->|"query"| Neon[("Neon Postgres")]
 ```
 
 ## Tech stack
@@ -343,7 +282,7 @@ flowchart LR
 | Layer | Tech |
 |---|---|
 | Framework | Next.js (App Router), TypeScript strict |
-| Runtime | AWS Lambda (ARM64) on the Node 20 runtime, Node 22 build toolchain |
+| Runtime | AWS Lambda (ARM64), Node 22 runtime and build toolchain |
 | Hosting | CloudFront, S3, Lambda via OpenNext |
 | Database | Postgres on Neon, per app, no shared base |
 | Auth | Auth.js v5, JWT sessions |
@@ -351,7 +290,7 @@ flowchart LR
 | CI/CD | GitHub Actions, OIDC deploys, no stored keys |
 | Security | CodeQL, gitleaks, npm audit, least-privilege IAM |
 | Validation | Zod at server-action boundaries |
-| Testing | Vitest, Playwright, axe, the spec-test gate at 100 percent |
+| Testing | Vitest, Playwright, the spec-test gate at 100 percent |
 | Observability | Sentry and PostHog, both no-op without keys |
 | Commits | Conventional Commits with commitlint |
 

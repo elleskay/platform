@@ -7,11 +7,11 @@ import type {
   Literal,
 } from "estree";
 
+import { BARE_SPEC_ID_RE, TITLE_SPEC_ID_RE } from "./spec-id.js";
+
 interface NamedCallee {
   name: string;
 }
-
-const SPEC_ID_RE = /^\[([A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)+-\d{3,})\]/;
 
 function calleeName(node: CallExpression): string | null {
   const c = node.callee as Node & Partial<NamedCallee>;
@@ -87,34 +87,45 @@ export const requireExpectInSpecTest: Rule.RuleModule = {
     type: "problem",
     docs: {
       description:
-        "Require at least one expect() call inside every test whose title is prefixed with a spec ID like [ARM-XXX-001]",
+        "Require at least one expect() call inside every spec-bound test: specTest('ARM-XXX-001', ...) or test('[ARM-XXX-001] ...')",
     },
     schema: [],
     messages: {
       missingExpect:
-        "test('[{{id}}] ...') must contain at least one expect() call. A spec requirement that records no assertion does not verify behavior.",
-      missingBody:
-        "test('[{{id}}] ...') must have a function body.",
+        "The test for {{id}} must contain at least one expect() call. A spec requirement that records no assertion does not verify behavior.",
+      missingBody: "The test for {{id}} must have a function body.",
     },
   },
   create(context) {
+    function checkBody(node: CallExpression, id: string): void {
+      const body = findBodyFunction(node);
+      if (!body) {
+        context.report({ node, messageId: "missingBody", data: { id } });
+        return;
+      }
+      if (!bodyHasExpect(body)) {
+        context.report({ node, messageId: "missingExpect", data: { id } });
+      }
+    }
+
     return {
       CallExpression(node: CallExpression) {
         const callee = calleeName(node);
-        if (callee !== "test" && callee !== "it") return;
-        const title = getStringLiteral(node.arguments[0] as Node | undefined);
-        if (!title) return;
-        const m = SPEC_ID_RE.exec(title);
-        if (!m) return;
-        const id = m[1] ?? "<unknown>";
-        const body = findBodyFunction(node);
-        if (!body) {
-          context.report({ node, messageId: "missingBody", data: { id } });
+        const first = getStringLiteral(node.arguments[0] as Node | undefined);
+        if (!first) return;
+
+        // Primary API: specTest("ARM-XXX-001", "title", fn, opts?)
+        if (callee === "specTest") {
+          if (!BARE_SPEC_ID_RE.test(first)) return;
+          checkBody(node, first);
           return;
         }
-        if (!bodyHasExpect(body)) {
-          context.report({ node, messageId: "missingExpect", data: { id } });
-        }
+
+        // Raw runners: test("[ARM-XXX-001] title", fn) / it(...)
+        if (callee !== "test" && callee !== "it") return;
+        const m = TITLE_SPEC_ID_RE.exec(first);
+        if (!m) return;
+        checkBody(node, m[1] ?? "<unknown>");
       },
     };
   },

@@ -31,12 +31,12 @@ Real example from armoury:
 
 | Spec ID | What it asserts | Passed? |
 |---|---|---|
-| ARM-PHOTO-001 | Officer submit page renders `<input type="file">` for items with `kind === "photo"` | ✅ |
-| ARM-PHOTO-002 | A submitted photo persists as a data URL in `responses.valueText` | ✅ |
-| ARM-PHOTO-003 | The submission detail page renders an `<img>` for photo responses | ✅ |
-| **Untested** | **Admin builder dropdown offers Photo as a selectable item kind** | ❌ |
+| ARM-PHOTO-001 | Officer submit page renders `<input type="file">` for items with `kind === "photo"` | yes |
+| ARM-PHOTO-002 | A submitted photo persists as a data URL in `responses.valueText` | yes |
+| ARM-PHOTO-003 | The submission detail page renders an `<img>` for photo responses | yes |
+| **Untested** | **Admin builder dropdown offers Photo as a selectable item kind** | **no** |
 
-All three spec IDs passed. Coverage was 126/126. The photo feature was unreachable because no admin could ever create a template item of `kind === "photo"` — the builder's `<Select>` was missing the option. The gate was satisfied; the feature was broken.
+All three spec IDs passed. Coverage was 126/126. The photo feature was unreachable because no admin could ever create a template item of `kind === "photo"`: the builder's `<Select>` was missing the option. The gate was satisfied; the feature was broken.
 
 **Mitigation:** for every user-facing feature, write at least one journey-level e2e that traverses the full path:
 
@@ -72,10 +72,10 @@ See `docs/TESTING.md` "Failure modes the gate does NOT catch" for the same cavea
 
 ## Reading list
 
-- `docs/TESTING.md` — full system overview (spec format, category routing, ESLint rule, CLI usage)
-- `samples/example.spec.yml` — minimum viable spec for testing the runner
-- `samples/bad.test.ts` — example of a test the ESLint rule blocks (zero `expect()` calls)
+- `docs/TESTING.md`: full system overview (spec format, category routing, ESLint rule, CLI usage)
+- `samples/example.spec.yml`: minimum viable spec for testing the runner
+- `samples/bad.test.ts`: example of a test the ESLint rule blocks (zero `expect()` calls)
 
 ## Why this package is private
 
-The platform copies, it does not import. Each app pins its own snapshot of `@platform/spec-test` from `packages/` rather than depending on a published version, so breaking changes never propagate without explicit action. See platform `README.md` "Opinions" for the philosophy.
+The platform copies, it does not import. Each app pins its own snapshot of `@platform/spec-test` from `packages/` rather than depending on a published version, so breaking changes never propagate without explicit action. The platform `README.md` covers the copy-not-import philosophy.

@@ -35,9 +35,25 @@ check() {
   if "$@"; then ok "$name"; else err "$name"; fi
 }
 
+# Wait for the URL to respond at all before classifying the app. A distribution
+# fresh out of CloudFormation can briefly return 000/5xx; without this the mode
+# detection below misfires and every check fails spuriously.
+ROOT_CODE=000
+for attempt in 1 2 3 4 5 6; do
+  ROOT_CODE=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$URL/") || ROOT_CODE=000
+  case "$ROOT_CODE" in
+    000|5*)
+      if [ "$attempt" -lt 6 ]; then
+        note "root returned $ROOT_CODE, retrying in 10s ($attempt/6)"
+        sleep 10
+      fi
+      ;;
+    *) break;;
+  esac
+done
+
 # Detect the app type from how the root responds: a redirect means an auth app
 # that gates on /login, a 200 means a public landing page.
-ROOT_CODE=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$URL/")
 if [ "$ROOT_CODE" = "307" ] || [ "$ROOT_CODE" = "308" ]; then
   MODE="auth"; PAGE="/login"
 else

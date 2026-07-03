@@ -25,7 +25,7 @@ This template provides platform-layer security defaults:
 - Security headers via Next.js `headers()` in `next.config.ts`
 - Rate limiting on sensitive routes
 - Input validation via Zod
-- Secrets managed via AWS Secrets Manager (not env files in prod)
+- Secrets in GitHub Actions secrets and Lambda env vars, never committed to the repo
 
 Apps built on this template are expected to maintain these defaults and add app-specific controls as needed.
 

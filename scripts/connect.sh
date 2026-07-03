@@ -53,7 +53,7 @@ while [ $# -gt 0 ]; do
     --skip-db) SKIP_DB=1; shift;;
     --yes) ASSUME_YES=1; shift;;
     --dry-run) DRY_RUN=1; shift;;
-    -h|--help) sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
+    -h|--help) awk 'NR>1 && !/^#/{exit} NR>1{sub(/^# ?/,""); print}' "$0"; exit 0;;
     *) echo "Unknown option: $1" >&2; exit 2;;
   esac
 done

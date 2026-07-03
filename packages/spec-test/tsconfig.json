@@ -3,19 +3,10 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "types": ["node"],
-    "strict": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "noUncheckedIndexedAccess": true
+    // Keep the incremental-build state inside dist so `rm -rf dist` cannot
+    // leave a stale .tsbuildinfo that makes the next build emit nothing.
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "types": ["node"]
   },
   "include": ["src/**/*"]
 }

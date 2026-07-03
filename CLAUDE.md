@@ -35,7 +35,7 @@ infra/
 scripts/verify-deploy.sh             # Post-deploy smoke test (auth-aware: full auth suite or public subset)
 
 .github/workflows/
-├── ci.yml                           # actionlint, typecheck, lint, demo build, cdk synth
+├── ci.yml                           # actionlint, typecheck, lint, demo build, cdk synth, spec-test self-test
 ├── security.yml                     # CodeQL, gitleaks, npm audit
 └── deploy.yml                       # OIDC, preflight gate, build, deploy, smoke test
 ```

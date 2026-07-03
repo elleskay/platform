@@ -119,7 +119,7 @@ These all bit us in production. The platform encodes the fixes; do not undo them
 
 **Symptom:** `ERROR Error: ENOENT: no such file or directory, mkdtemp 'C:\...\.open-next\image-optimization-functionXXXXXX'`.
 
-**Fix:** Build on Linux/macOS/WSL. If you must build on Windows and your app uses no `next/image`, the deploy still works — the image function bundle is incomplete but never invoked.
+**Fix:** Build on Linux/macOS/WSL. If you must build on Windows and your app uses no `next/image`, the deploy still works: the image function bundle is incomplete but never invoked.
 
 ### 6. `cdk bootstrap` fails if your stacks reference missing build assets
 

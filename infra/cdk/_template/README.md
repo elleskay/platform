@@ -14,8 +14,8 @@ npm install
 
 Then edit:
 
-- `bin/app.ts` — rename the stack id (e.g. `AppServerless` → `ArmouryServerless`)
-- `lib/web-stack.ts` — confirm `appPath` resolves to your Next.js app directory
+- `bin/app.ts`: rename the stack id (e.g. `AppServerless` → `ArmouryServerless`)
+- `lib/web-stack.ts`: confirm `appPath` resolves to your Next.js app directory
 - Optionally enable `customDomain` to skip the two-pass deploy (see `lib/constructs/NextjsServerless.ts` JSDoc)
 
 ## Deploy
@@ -34,10 +34,10 @@ DATABASE_URL=... AUTH_SECRET=... AUTH_URL=https://your-cf-url npx cdk deploy --a
 
 ## What's inside
 
-- `bin/app.ts` — CDK app entry point
-- `lib/web-stack.ts` — the deploy unit (one CloudFormation stack)
-- `lib/constructs/NextjsServerless.ts` — reusable construct, ~200 lines that encode all the production gotchas
-- `package.json`, `tsconfig.json`, `cdk.json`, `.gitignore` — CDK package boilerplate
+- `bin/app.ts`: CDK app entry point
+- `lib/web-stack.ts`: the deploy unit (one CloudFormation stack)
+- `lib/constructs/NextjsServerless.ts`: the reusable construct that encodes all the production gotchas
+- `package.json`, `tsconfig.json`, `cdk.json`, `.gitignore`: CDK package boilerplate
 
 ## Why copy and not import as a package
 

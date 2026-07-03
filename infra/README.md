@@ -3,7 +3,7 @@
 AWS CDK in TypeScript. Three pieces:
 
 - `cdk/_template/`: a full CDK package you copy and rename per app. It contains the reusable `NextjsServerless` construct (`lib/constructs/`) plus the app stack (`bin/app.ts`, `lib/web-stack.ts`). See `cdk/_template/README.md`.
-- `cdk/_setup/`: a one-time stack that provisions the GitHub OIDC provider and a least-privilege deploy role. Usually run for you by `npm run setup` (`scripts/connect.sh`).
+- `cdk/_setup/`: a one-time stack that provisions a least-privilege deploy role trusted via the account's GitHub OIDC provider. Usually run for you by `npm run setup` (`scripts/connect.sh`), which also creates the OIDC provider if the account has none.
 - `iam/`: the pre-canned least-privilege IAM policy attached to the deploy role.
 
 ## Why no shared "base" stacks?

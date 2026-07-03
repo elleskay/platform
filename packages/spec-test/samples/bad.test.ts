@@ -1,4 +1,4 @@
-import { specTest } from "@platform/spec-test/playwright";
+import { specTest, expect } from "@platform/spec-test/playwright";
 
 specTest("EX-AUTH-001", "Unauthed users redirected", async ({ page }) => {
   await page.goto("/admin");

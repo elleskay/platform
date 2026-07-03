@@ -1,5 +1,5 @@
-import * as path from "path";
-import * as fs from "fs";
+import * as path from "node:path";
+import * as fs from "node:fs";
 import * as cdk from "aws-cdk-lib";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
@@ -13,9 +13,12 @@ export interface SetupStackProps extends cdk.StackProps {
 
 /**
  * One-time setup stack. Provisions:
- *  - GitHub OIDC identity provider (only if not already in the account)
  *  - IAM role trusted by GitHub Actions for the given repo
  *  - Inline policy from infra/iam/cdk-deploy-policy.json attached to the role
+ *
+ * The GitHub OIDC identity provider itself must already exist in the account;
+ * this stack only references it. scripts/connect.sh creates it when missing
+ * (see also the Caveats section in this package's README).
  *
  * Run once per AWS account + GitHub repo:
  *
