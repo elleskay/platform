@@ -2,10 +2,7 @@
 
 ## Reporting a vulnerability
 
-Report security issues via either channel (prefer the first if available):
-
-1. **GitHub Private Vulnerability Reporting:** [github.com/elleskay/platform/security/advisories/new](https://github.com/elleskay/platform/security/advisories/new). Encrypted, tracked, and lets us coordinate a fix and CVE if needed.
-2. **Email:** lskpes10@gmail.com
+Report security issues through **GitHub Private Vulnerability Reporting:** [github.com/elleskay/platform/security/advisories/new](https://github.com/elleskay/platform/security/advisories/new). Reports are private, tracked, and let us coordinate a fix and CVE if needed.
 
 Do not open public GitHub issues for security problems.
 
