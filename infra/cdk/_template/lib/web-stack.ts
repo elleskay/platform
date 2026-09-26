@@ -26,7 +26,9 @@ export class WebStack extends cdk.Stack {
       // customDomain: {
       //   domainName: "armoury.example.com",
       //   certificateArn: "arn:aws:acm:us-east-1:...",
+      //   // Both zone fields, or neither: with only one, no DNS record is created.
       //   hostedZoneId: "Z123ABCDE",
+      //   hostedZoneName: "example.com",
       // },
     });
   }

@@ -6,7 +6,7 @@ Minimal Next.js app that uses every pattern the platform recommends:
 - Edge-safe middleware (`auth.config.ts` + `middleware.ts`)
 - Security headers + Server Actions `allowedOrigins` in `next.config.ts`
 - Client-side `SignOutButton` (the only signout pattern that works on AWS serverless)
-- `/api/health` for ALB/CloudFront target groups and smoke tests
+- `/api/health` for the post-deploy smoke test
 - OpenNext config for AWS Lambda + S3 + CloudFront
 
 ## Why it exists in the platform repo
@@ -21,7 +21,7 @@ copying this demo (`cp -r apps/_demo apps/web`) and growing it. See `docs/SETUP.
 
 - `npm install` at repo root
 - Edit `auth.ts` to swap the hardcoded `DEMO_USER` for your real provider
-- Build & deploy via `npm run build:open-next` then `cdk deploy` in `infra/cdk/_template/` (after renaming)
+- Build & deploy via `npm run build:open-next`, then `cdk deploy` from your copy of `infra/cdk/_template/`
 
 ## Local development
 

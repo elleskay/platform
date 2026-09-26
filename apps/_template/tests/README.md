@@ -36,11 +36,13 @@ npx playwright install --with-deps chromium
 
 ```js
 // eslint.config.mjs
+import tseslint from "typescript-eslint";
 import { eslintPlugin as specTest } from "@platform/spec-test";
 
 export default [
   {
     files: ["tests/**/*.ts"],
+    languageOptions: { parser: tseslint.parser },
     plugins: { "spec-test": specTest },
     rules: { "spec-test/require-expect-in-spec-test": "error" },
   },
@@ -54,6 +56,6 @@ When you give the agent a brief for a new feature or app:
 1. Agent writes/extends `specs/<app>.yml` with new requirements (each with a unique ID)
 2. Agent writes a `specTest('<ID>', ...)` per requirement **in the same turn as the implementation**
 3. Tests are run continuously; the agent does not claim "done" until `npm run test:spec` is green
-4. CI re-runs `test:spec` on every push; a 0% → 100% coverage diff is required for merge
+4. CI (`.github/workflows/test.yml`) runs the same steps on every push, and the gate must report 100% coverage to merge
 
 This means you never have to prompt "did you check it works." If a requirement isn't covered, CI blocks merge. If the agent forgets to add a spec entry for a new behavior, code review catches it.

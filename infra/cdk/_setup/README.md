@@ -2,6 +2,8 @@
 
 One-time stack that provisions the AWS side of GitHub Actions OIDC deploys for an app on this platform.
 
+`npm run setup` (`scripts/connect.sh`) runs all of this for you, including creating the OIDC provider and setting the GitHub secret. The steps below are the manual path.
+
 ## Use
 
 Run once per AWS account + GitHub repo combo:
@@ -44,7 +46,7 @@ The role is locked to the named repo; another repo on the same OIDC provider can
     --client-id-list sts.amazonaws.com \
     --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1
   ```
-  Then run this stack. (A future version of this stack could provision the provider conditionally.)
+  Then run this stack. (`npm run setup` creates the provider when it is missing.)
 
 - **The role's policy is `cdk-deploy` from `infra/iam/cdk-deploy-policy.json`**, which is permissive (`s3:*`, `lambda:*`, `cloudfront:*`). Fine for portfolio scale; tighten resource ARNs for production.
 

@@ -22,7 +22,7 @@ Or via the console: IAM, Users, `cdk-deploy`, Permissions, Add permissions, Crea
 
 ### Attaching to a GitHub Actions OIDC role
 
-When you set up the OIDC trust for `.github/workflows/deploy.yml`, attach this same policy to the assumed role.
+`infra/cdk/_setup` (run by `npm run setup`) attaches this policy to the deploy role as an inline policy, so there is nothing to do by hand. If you create the role yourself, attach this same policy to it.
 
 ## Why this exists
 

@@ -88,18 +88,20 @@ The wrapper records `{id, status, category, file, durationMs}` to `.spec-coverag
 
 ```js
 // eslint.config.mjs
+import tseslint from "typescript-eslint";
 import { eslintPlugin as specTest } from "@platform/spec-test";
 
 export default [
   {
     files: ["tests/**/*.ts"],
+    languageOptions: { parser: tseslint.parser },
     plugins: { "spec-test": specTest },
     rules: { "spec-test/require-expect-in-spec-test": "error" },
   },
 ];
 ```
 
-Without this rule, a test author could write a `specTest()` body that never asserts anything, and the spec ID would be marked "covered" because the test passed. The rule statically prevents that.
+`apps/_demo/eslint.config.mjs` is a working example. Without this rule, a test author could write a `specTest()` body that never asserts anything, and the spec ID would be marked "covered" because the test passed. The rule statically prevents that.
 
 ## Running locally
 
@@ -128,7 +130,7 @@ If a feature calls a non-deterministic service (an LLM, a third-party API), keep
 
 ## CI workflow
 
-Copy `apps/_template/.github/workflows/test.yml` into your app's `.github/workflows/`. It includes:
+Copy `apps/_template/.github/workflows/test.yml` into the repo root `.github/workflows/`, the only place GitHub runs workflows from (it targets `apps/web`). It includes:
 
 - Postgres 17 service container
 - Migration + seed before tests

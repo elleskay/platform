@@ -58,7 +58,7 @@ Suggested icon per app:
 
 ## Pick a layout shell
 
-Most apps benefit from the sidebar pattern in `AppSidebar.tsx`. Some don't.
+Most apps benefit from a sidebar layout (for example shadcn's `Sidebar` component). Some don't.
 
 | Layout | Use when |
 |---|---|

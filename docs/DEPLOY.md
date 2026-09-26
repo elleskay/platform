@@ -2,44 +2,9 @@
 
 Reference for deploying apps cloned from this platform. The `.github/workflows/deploy.yml` automates everything below; this doc explains what it does and the gotchas the workflow handles for you.
 
-## One-time AWS setup
+## One-time setup
 
-### CDK bootstrap
-
-```bash
-npx cdk bootstrap aws://<account-id>/<region>
-```
-
-You only need this once per account+region. Bootstrap provisions the CDK toolkit stack (S3 staging bucket, ECR repo for container assets, IAM roles).
-
-### OIDC role for GitHub Actions
-
-1. In AWS IAM, add `token.actions.githubusercontent.com` as an OIDC provider.
-2. Create a role with this trust policy (replace the GitHub path):
-
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [{
-       "Effect": "Allow",
-       "Principal": {
-         "Federated": "arn:aws:iam::<account>:oidc-provider/token.actions.githubusercontent.com"
-       },
-       "Action": "sts:AssumeRoleWithWebIdentity",
-       "Condition": {
-         "StringEquals": {
-           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-         },
-         "StringLike": {
-           "token.actions.githubusercontent.com:sub": "repo:elleskay/my-app:*"
-         }
-       }
-     }]
-   }
-   ```
-
-3. Attach the policy from `infra/iam/cdk-deploy-policy.json` to this role.
-4. Add the role ARN to GitHub Actions secrets as `AWS_DEPLOY_ROLE_ARN`.
+`npm run setup` (`scripts/connect.sh`, see [SETUP.md](SETUP.md) step 6) does all of it: creates the GitHub OIDC provider if the account has none, bootstraps CDK, deploys the deploy role from `infra/cdk/_setup` (trust pinned to this repo, `infra/iam/cdk-deploy-policy.json` attached), and sets the secrets and variables below. For the manual path, see `infra/cdk/_setup/README.md`.
 
 ### GitHub Actions secrets and variables
 
@@ -67,18 +32,19 @@ All five helpers no-op cleanly without their env vars, so omit any you don't use
 
 ## What the deploy does
 
-`.github/workflows/deploy.yml` runs on push to `main`:
+`.github/workflows/deploy.yml` runs on push to `main` (docs-only pushes skip it) or on demand via `workflow_dispatch`:
 
-1. Checkout, install Node 22, restore npm cache.
-2. Assume the OIDC role.
-3. Install workspace dependencies (`npm ci`).
-4. Apply DB migrations (`npx tsx db/migrate.ts` in `apps/web/`), conditional on `db/migrate.ts` existing. Runs **before** the new Lambda code goes live so the new code never references a column that hasn't been created yet.
-5. Seed reference / demo data (`npx tsx db/seed-demo.ts` in `apps/web/`), conditional on `db/seed-demo.ts` existing. Must be idempotent. See `docs/variants/default-nextjs.md` "Seed strategy".
-6. Build the Next.js app with OpenNext (`npm run build:open-next` in `apps/web/`). Env vars passed in: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `ALLOWED_ORIGINS`.
-7. Install CDK deps (`npm ci` in the CDK dir (default `infra/cdk/_template`)).
-8. `cdk deploy --all` with the same env vars. CDK reads them at synth time and bakes them into the Lambda env.
-9. Read the deployed URL from `cdk-outputs.json`.
-10. Run `scripts/verify-deploy.sh` against that URL. Fails the workflow if any smoke check fails.
+1. Preflight: skip the deploy if the `AWS_DEPLOY_ROLE_ARN` secret is unset (the template repo itself, or a fresh clone before setup).
+2. Checkout, install Node 22, restore npm cache.
+3. Assume the OIDC role.
+4. Install workspace dependencies (`npm ci`), then build `@platform/spec-test` (its `dist/` is gitignored, and `next build` typechecks the tests that import it).
+5. Apply DB migrations (`npx tsx db/migrate.ts` in `apps/web/`), conditional on `db/migrate.ts` existing. Runs **before** the new Lambda code goes live so the new code never references a column that hasn't been created yet.
+6. Seed reference / demo data (`npx tsx db/seed-demo.ts` in `apps/web/`), conditional on `db/seed-demo.ts` existing. Must be idempotent. See [DATA.md](DATA.md).
+7. Build the Next.js app with OpenNext (`npm run build:open-next` in `apps/web/`). Env vars passed in: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `ALLOWED_ORIGINS`.
+8. Install CDK deps (`npm ci` in the CDK dir, default `infra/cdk/_template`, overridden by the `CDK_DIR` variable).
+9. `cdk deploy --all` with `DATABASE_URL`, `AUTH_SECRET`, and `AUTH_URL`. CDK reads them at synth time and bakes them into the Lambda env.
+10. Read the deployed URL from `cdk-outputs.json`.
+11. Run `scripts/verify-deploy.sh` against that URL. Fails the workflow if any smoke check fails.
 
 ## Rollback
 
@@ -182,11 +148,11 @@ If you're shipping a brand-new app, ignore this. Logical ID overrides only matte
 
 **Symptom:** You add a new template / inventory item / lookup row to `db/seed.ts`, push, CI green, deploy lands. Prod still doesn't have the row. Manual `psql` shows the row genuinely isn't there.
 
-**Cause:** `db/seed.ts` is the dev/CI fixture seed. It runs only in `apps/_template/.github/workflows/test.yml` against the Postgres service container, never in prod, because it's destructive (`db.delete(...)` everything before reseeding). Running it on prod would wipe user data.
+**Cause:** `db/seed.ts` is the dev/CI fixture seed. It runs only in the app's `test.yml` (from `apps/_template/.github/workflows/`) against the Postgres service container, never in prod, because it's destructive (`db.delete(...)` everything before reseeding). Running it on prod would wipe user data.
 
-**Fix:** Split the seed into two files. Keep `db/seed.ts` for the destructive dev/CI fixture. Add `db/seed-demo.ts` for prod-safe reference data: every row looked up by natural key (`email` for users, `name+agency` for teams, `externalRef` for inventory) and inserted only if missing. Wire it into `.github/workflows/deploy.yml` as a conditional step right after the migrate step. Reruns on every deploy are no-ops because every row has a stable lookup.
+**Fix:** Split the seed into two files. Keep `db/seed.ts` for the destructive dev/CI fixture. Add `db/seed-demo.ts` for prod-safe reference data: every row looked up by natural key (`email` for users, `name+agency` for teams, `externalRef` for inventory) and inserted only if missing. `.github/workflows/deploy.yml` already runs it as a conditional step right after the migrate step. Reruns on every deploy are no-ops because every row has a stable lookup.
 
-See `docs/variants/default-nextjs.md` "Seed strategy" for the full pattern (including `ensureX` helpers and the `DEMO_ANCHOR` constant for deterministic synthetic activity). Anchored to Rollback rule above ("never run destructive operations in deploy"): seed-demo respects that by design.
+See [DATA.md](DATA.md) for the full pattern (including `ensureX` helpers and the `DEMO_ANCHOR` constant for deterministic synthetic activity). Anchored to Rollback rule above ("never run destructive operations in deploy"): seed-demo respects that by design.
 
 ### 11. Every request hits Lambda; "Rate Exceeded" on low-concurrency accounts
 
@@ -194,7 +160,7 @@ See `docs/variants/default-nextjs.md` "Seed strategy" for the full pattern (incl
 
 **Cause:** The construct's default CloudFront behavior uses `CACHING_DISABLED`, so the HTML/RSC responses are never cached at the edge. Every visit and every prefetch goes to the server Lambda. That is the safe default for auth/SSR apps (never cache a personalized response) but wasteful and fragile for static/SSG-heavy apps.
 
-**Fix:** Two levers, use either or both.
+**Fix:** Use any of these.
 1. App level: set `prefetch={false}` on `next/link` to stop the prefetch fan-out (cheapest mitigation).
 2. Construct level: for a content/SSG app, pass `defaultCachePolicy` to `NextjsServerless` with a policy that honours origin `Cache-Control` (minTtl 0), so cacheable pages cache at CloudFront while dynamic routes (which Next marks `no-store`) stay uncached. See the `defaultCachePolicy` prop docs in `NextjsServerless.ts`.
 3. Or request a Lambda concurrency limit increase for the account.

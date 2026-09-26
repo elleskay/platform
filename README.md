@@ -153,7 +153,7 @@ flowchart LR
 
 | Building block | Location | Responsibility |
 |---|---|---|
-| Conventions | `CLAUDE.md`, `docs/` | Agent protocol, setup checklist, deploy runbook and gotcha catalogue, testing guide, SSDLC. |
+| Conventions | `CLAUDE.md`, `docs/` | Agent protocol, setup checklist, deploy runbook and gotcha catalogue, testing guide, migrations and seeding guide, SSDLC. |
 | App overlays | `apps/_template/` | Files copied into a new app: security headers and Server Actions origins, edge-safe auth and middleware, client sign-out, Sentry, PostHog, toasts, email, rate limiting, UI primitives, test scaffolding, and the app's gate workflow (`test.yml`). |
 | Demo app | `apps/_demo/` | A minimal working app that CI builds, synths, and gates as the template's self-test. Stays in every clone. |
 | Spec gate | `packages/spec-test/` | Spec schema, `specTest()` for Vitest and Playwright, the `spec-coverage` CLI, and the ESLint rule. See 5.2. |
@@ -369,7 +369,7 @@ Sentry, PostHog, Resend, and Upstash are pre-wired and no-op until their keys ar
 
 - Deploys run `db/migrate.ts` before the new code goes live. A deploy that fails afterward leaves the old code on the new schema, so migrations must stay backward compatible.
 - `db/seed.ts` is destructive and runs only in dev and CI. `db/seed-demo.ts` is idempotent (natural-key lookups, timestamps anchored to a fixed `DEMO_ANCHOR`) and runs on every deploy.
-- Deploys never run destructive operations. Rollback is `git revert` and push.
+- Deploys never run destructive operations. Rollback is `git revert` and push. The seed patterns are in [docs/DATA.md](docs/DATA.md).
 
 ### 8.7 Caching
 

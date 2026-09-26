@@ -5,7 +5,9 @@
 # Wires the GitHub + AWS connection the deploy workflow needs, so that every
 # push then auto-builds, tests, and deploys to a live AWS URL with no stored
 # keys. Designed to be run by you, or by an AI coding agent on your behalf,
-# once per repo. Re-running is safe (idempotent).
+# once per repo. Re-running reuses the AWS pieces, but pass --database-url or
+# --skip-db on a re-run or it provisions a second database, and every run
+# rotates AUTH_SECRET (signing users out at the next deploy).
 #
 # It will:
 #   1. ensure the GitHub Actions OIDC provider exists in your AWS account

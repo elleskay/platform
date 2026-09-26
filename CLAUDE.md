@@ -13,17 +13,22 @@ apps/
 │   ├── sentry.{client,server,edge}.config.ts + instrumentation.ts
 │   ├── lib/email.ts                 # Resend helper (no-ops without key)
 │   ├── lib/rate-limit.ts            # Upstash helper (no-ops without keys)
-│   └── components/
-│       ├── SignOutButton.tsx        # Client signout
-│       ├── PostHogProvider.tsx      # Analytics + flags (no-ops without key)
-│       ├── Toaster.tsx              # Sonner toast root
-│       └── forms-README.md          # Documents RHF vs server-action forms
+│   ├── components/
+│   │   ├── SignOutButton.tsx        # Client signout
+│   │   ├── PostHogProvider.tsx      # Analytics + flags (no-ops without key)
+│   │   ├── Toaster.tsx              # Sonner toast root
+│   │   ├── StatCard, EmptyState, PageHeader, ThemeProvider, ThemeToggle   # UI primitives (shadcn/ui)
+│   │   └── forms-README.md, theming-README.md
+│   ├── specs/, tests/, vitest.config.ts, playwright.config.ts   # Spec-driven test scaffolding
+│   └── .github/workflows/test.yml   # The app's spec gate. Copy to the ROOT .github/workflows/
 └── _demo/                           # Working demo app. Platform CI builds this, synths the
                                      # CDK construct against it, and runs the spec gate
                                      # against its own spec (dogfoods spec-test).
 
+packages/spec-test/                  # @platform/spec-test: spec schema, specTest(), spec-coverage CLI, ESLint rule
+
 infra/
-├── cdk/_template/                   # Full CDK package. Copy and rename per app.
+├── cdk/_template/                   # Full CDK package. Copy per app, keep the original (CI synths it).
 │   ├── bin/app.ts
 │   ├── lib/web-stack.ts
 │   ├── lib/constructs/NextjsServerless.ts   # The reusable construct
@@ -32,7 +37,11 @@ infra/
 ├── cdk/_setup/                      # One-time stack: GitHub OIDC + IAM role
 └── iam/cdk-deploy-policy.json       # Least-privilege IAM policy
 
-scripts/verify-deploy.sh             # Post-deploy smoke test (auth-aware: full auth suite or public subset)
+scripts/
+├── connect.sh                       # `npm run setup`: one-command GitHub + AWS wiring
+└── verify-deploy.sh                 # Post-deploy smoke test (auth-aware: full auth suite or public subset)
+
+docs/                                # SETUP, DEPLOY (gotcha catalogue), TESTING, DATA (migrations + seeding), SSDLC
 
 .github/workflows/
 ├── ci.yml                           # actionlint, commitlint (PRs), typecheck, lint, demo build, cdk synth, spec-test self-test
@@ -48,6 +57,7 @@ Only the cross-cutting platform layer:
 - Reusable CDK construct + CDK package scaffold (`infra/cdk/_template/`)
 - IAM policy JSON
 - Reference overlay files (`apps/_template/`)
+- Spec gate package (`packages/spec-test/`)
 - Working demo app (`apps/_demo/`) for self-test
 - Smoke-test script
 - Base TS/ESLint/Prettier/Commitlint configs
@@ -90,30 +100,33 @@ The demo app at `apps/_demo/` exists to test the construct, not to ship features
 
 ## Known production gotchas (do not relearn)
 
-All documented in `docs/DEPLOY.md`. Don't undo the fixes:
+Numbered as in `docs/DEPLOY.md`, which has the symptom, cause, and fix for each. Don't undo the fixes:
 
 1. **Server Actions need `allowedOrigins`** with both CloudFront domain and Lambda Function URL host. Read from `ALLOWED_ORIGINS` env at build time.
 2. **`AUTH_URL` env var must be set** to the canonical public URL or NextAuth redirects to the raw Lambda URL.
 3. **Sign-out must use the client-side `signOut` from `next-auth/react`**, not a server-action form.
-4. **`open-next build` must run before `cdk bootstrap`/`deploy`** because the construct references `.open-next/` paths.
-5. **CDK env vars are baked at synth time**, not deploy time.
-6. **OpenNext image-opt function fails to install its deps on Windows**. Build on Linux/macOS/WSL.
+4. **CDK env vars are baked at synth time**, not deploy time.
+5. **OpenNext image-opt function fails to install its deps on Windows**. Build on Linux/macOS/WSL.
+6. **`open-next build` must run before `cdk bootstrap`/`deploy`** because the construct references `.open-next/` paths.
 7. **First deploy needs two passes** (or use `customDomain` prop on the construct).
 8. **Refactoring resources into a construct changes logical IDs.** Use `logicalIdOverrides` for in-place upgrades.
 9. **CloudFront deletes take 10-15 minutes.** Not a bug.
-10. **`public/` files are auto-routed to S3** by the construct (it scans `.open-next/assets` at synth). A root `public/` file like `robots.txt` would otherwise 404 via the server Lambda. Bundled assets (e.g. a pdf.js worker) should use `new URL("pkg/worker.mjs", import.meta.url)` to land under `/_next/static`. See `docs/DEPLOY.md` #12.
-11. **App-specific runtime secrets (e.g. an AI key) must be wired in two places**: the app's CDK `web-stack.ts` `environment` AND the deploy workflow's CDK-deploy step. A GitHub secret nothing forwards never reaches the Lambda (env is baked at synth, #5). The smoke test also adapts to non-auth apps. See `docs/DEPLOY.md` #13.
-12. **Slow routes are killed at 30s** (server Lambda + CloudFront origin read timeout both default to 30s; a route `maxDuration` is only a hint). For AI/long-running routes pass `serverTimeoutSeconds` (up to 60) to the `NextjsServerless` construct, which raises both. See `docs/DEPLOY.md` #14.
-13. **First deploy can stall on the S3 asset upload.** `BucketDeployment`'s uploader Lambda defaults to 128 MB, which is bandwidth-starved for a Next.js asset bundle (hundreds of small chunks) and can crawl or time out. The construct now sets `memoryLimit: 1536` on `AssetsDeployment`. See `docs/DEPLOY.md` #15.
-14. **Turbopack cannot bundle packages with inlined WASM** (e.g. the QuickJS singlefile sandbox variant): `next build` fails with an octal-escape SyntaxError. Add them to `serverExternalPackages` in `next.config.ts`; OpenNext ships externals with the server function. See `docs/DEPLOY.md` #17.
+10. **`db/seed.ts` never runs in prod.** It is the destructive dev/CI fixture. Prod reference data goes in the idempotent `db/seed-demo.ts`, which every deploy runs after migrations. See `docs/DATA.md`.
+11. **"Rate Exceeded" on low-concurrency accounts.** The default behavior never caches, so every request and prefetch hits the Lambda. Use `prefetch={false}`, a `defaultCachePolicy`, or a concurrency quota increase.
+12. **`public/` files are auto-routed to S3** by the construct (it scans `.open-next/assets` at synth). A root `public/` file like `robots.txt` would otherwise 404 via the server Lambda. Bundled assets (e.g. a pdf.js worker) should use `new URL("pkg/worker.mjs", import.meta.url)` to land under `/_next/static`.
+13. **App-specific runtime secrets (e.g. an AI key) must be wired in two places**: the app's CDK `web-stack.ts` `environment` AND the deploy workflow's CDK-deploy step. A GitHub secret nothing forwards never reaches the Lambda (env is baked at synth, #4). The smoke test also adapts to non-auth apps.
+14. **Slow routes are killed at 30s** (server Lambda + CloudFront origin read timeout both default to 30s; a route `maxDuration` is only a hint). For AI/long-running routes pass `serverTimeoutSeconds` (up to 60) to the `NextjsServerless` construct, which raises both.
+15. **First deploy can stall on the S3 asset upload.** `BucketDeployment`'s uploader Lambda defaults to 128 MB, which is bandwidth-starved for a Next.js asset bundle (hundreds of small chunks) and can crawl or time out. The construct now sets `memoryLimit: 1536` on `AssetsDeployment`.
+16. **The Lambda filesystem is read-only** except `/tmp`, which is per-instance and ephemeral. Persist runtime state in S3 or the database, never on disk.
+17. **Turbopack cannot bundle packages with inlined WASM** (e.g. the QuickJS singlefile sandbox variant): `next build` fails with an octal-escape SyntaxError. Add them to `serverExternalPackages` in `next.config.ts`; OpenNext ships externals with the server function.
 
 ## When adding a new app to a cloned repo
 
 1. Create your real app at `apps/web/` (or copy `apps/_demo/` and grow it). Leave `apps/_demo/` in place for CI's self-test.
 2. If scaffolding with `create-next-app`, overlay files from `apps/_template/`
-3. Rename `infra/cdk/_template/` to `infra/cdk/<your-app>/`, edit `bin/app.ts` stack id
-4. Run `npm run setup` (`scripts/connect.sh`) to wire the GitHub + AWS connection (OIDC role, database, secrets), or configure secrets/vars manually per `docs/SETUP.md`. Then push and verify the smoke test passes.
-5. Copy `apps/_template/specs/`, `apps/_template/tests/`, `apps/_template/vitest.config.ts`, `apps/_template/playwright.config.ts`, and `apps/_template/.github/workflows/test.yml` into the new app. Wire the spec-test ESLint rule into the app's flat config. See `docs/TESTING.md`.
+3. Copy `infra/cdk/_template/` to `infra/cdk/<your-app>/` and edit the stack id in `bin/app.ts`. Keep `_template/`: CI synths it against `apps/_demo/`.
+4. Run `npm run setup -- --cdk-dir infra/cdk/<your-app>` (`scripts/connect.sh`) to wire the GitHub + AWS connection (OIDC role, database, secrets), or configure secrets/vars manually per `docs/SETUP.md`. Then push and verify the smoke test passes.
+5. Copy `apps/_template/specs/`, `apps/_template/tests/`, `apps/_template/vitest.config.ts`, and `apps/_template/playwright.config.ts` into the new app, and `apps/_template/.github/workflows/test.yml` into the root `.github/workflows/` (GitHub only runs workflows from there). Wire the spec-test ESLint rule into the app's flat config. See `docs/TESTING.md`.
 
 **Connecting is agent-guided; don't make the user figure it out.** `connect.sh` does the deterministic AWS/GitHub wiring, but the database and any interactive logins are the user's to provide. Before running `npm run setup`, settle the database with them: a Neon account (then `neonctl auth`), a Neon API key (`NEON_API_KEY`), or an existing Postgres URL (`--database-url`). If the script reports neonctl is installed but not logged in, it now fails fast on purpose, walk the user through one of those options rather than relaying the raw error. Use `scripts/connect.sh --dry-run` to preview without changing anything.
 

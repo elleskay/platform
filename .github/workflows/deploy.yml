@@ -116,9 +116,8 @@ jobs:
 
       # Seed reference / demo data after migrations. Must be idempotent
       # (look up by natural key, never delete user-generated rows) so reruns
-      # on every deploy are safe. See docs/variants/default-nextjs.md "Seed
-      # strategy" for the recommended pattern. Skipped if the app has no
-      # db/seed-demo.ts.
+      # on every deploy are safe. See docs/DATA.md for the recommended
+      # pattern. Skipped if the app has no db/seed-demo.ts.
       - name: Seed demo data (if db/seed-demo.ts exists)
         working-directory: ${{ env.APP_DIR }}
         env:

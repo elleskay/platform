@@ -23,7 +23,8 @@ apps/web/
 
 infra/cdk/
 ├── _setup/                      # one-time OIDC + deploy-role stack (shared)
-└── <your-app>/                  # copied + renamed from _template/
+├── _template/                   # keep: CI synths it against apps/_demo
+└── <your-app>/                  # copied from _template/
     ├── bin/app.ts               # rename the stack id here
     ├── lib/web-stack.ts         # instantiates NextjsServerless
     ├── lib/constructs/
@@ -48,6 +49,6 @@ new NextjsServerless(this, "Web", {
 
 ## Deploy
 
-Apps inherit `.github/workflows/deploy.yml` from this platform. Run `npm run setup` once to wire the GitHub + AWS connection, push to `main`, and the workflow handles bootstrap, build, deploy, and smoke test.
+Apps inherit `.github/workflows/deploy.yml` from this platform. Run `npm run setup -- --cdk-dir infra/cdk/<your-app>` once to wire the GitHub + AWS connection (OIDC provider, CDK bootstrap, deploy role, secrets), push to `main`, and the workflow handles build, deploy, and smoke test.
 
-See `docs/DEPLOY.md` for the full setup, including OIDC trust and the IAM policy in `infra/iam/cdk-deploy-policy.json`.
+See `docs/DEPLOY.md` for what the deploy does and the production gotchas it encodes.

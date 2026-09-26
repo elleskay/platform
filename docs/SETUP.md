@@ -7,16 +7,17 @@ Follow in order on a fresh clone. Skipping steps will bite you later.
 ```bash
 gh repo create my-app --template elleskay/platform --clone --private
 cd my-app
+npm install
 ```
 
 ## 2. GitHub repo settings
 
 - [ ] Set default branch to `main`
-- [ ] Enable branch protection on `main`: require PR, require CI to pass
+- [ ] Enable branch protection on `main`: require a PR, and require the `Spec coverage gate` check (from `test.yml`, step 3) plus the CI checks
 - [ ] Enable Dependabot alerts and security updates (Settings, Security)
-- [ ] Enable secret scanning (Settings, Code security)
+- [ ] Enable secret scanning and private vulnerability reporting (Settings, Code security)
 - [ ] Update `.github/CODEOWNERS` to your GitHub handle
-- [ ] Update `SECURITY.md` with your real disclosure email
+- [ ] Point the advisory link in `SECURITY.md` at your repo
 
 ## 3. Create your app
 
@@ -40,6 +41,8 @@ cp ../_template/components/SignOutButton.tsx components/
 cd ../..
 ```
 
+These four overlays carry the deploy fixes. For the optional helpers (Sentry, PostHog, email, rate limiting, UI primitives), see `apps/_template/README.md`.
+
 **Option B: Grow from the demo**
 
 ```bash
@@ -50,64 +53,59 @@ Then edit `apps/web/auth.ts` to swap the hardcoded `DEMO_USER` for your real pro
 
 ### Copy the spec-driven test scaffolding
 
-Every app on this platform is built and gated against a spec (see `docs/TESTING.md`). Option A apps must copy this scaffolding in; Option B apps already have it from `apps/_demo`.
+Every app on this platform is built and gated against a spec (see `docs/TESTING.md`).
 
 ```bash
+# Option A only: spec, Vitest setup, example tests (Option B has these from the demo)
 cp -r apps/_template/specs apps/web/
 cp -r apps/_template/tests apps/web/
 cp apps/_template/vitest.config.ts apps/web/
+# Both options: Playwright config, and the gate workflow in the ROOT
+# .github/workflows/ (the only place GitHub runs workflows from)
 cp apps/_template/playwright.config.ts apps/web/
-mkdir -p apps/web/.github/workflows
-cp apps/_template/.github/workflows/test.yml apps/web/.github/workflows/
+cp apps/_template/.github/workflows/test.yml .github/workflows/
 ```
 
-Then wire the spec-test ESLint rule into the app's flat config so a `specTest()` with no `expect()` fails lint. Without this scaffolding the coverage gate and `npm run test:spec` have nothing to run.
+Option B apps put their Playwright specs in `tests/e2e/` (see `apps/_template/tests/e2e/home.spec.ts`). Option A apps wire the spec-test ESLint rule into the app's flat config so a `specTest()` with no `expect()` fails lint (the demo's config already has it). Both merge the test scripts from `apps/_template/tests/README.md` into the app's `package.json`. `test.yml` also calls the app's `db:migrate` and `db:seed` scripts; delete those two steps if the app has no database. Without this scaffolding the coverage gate and `npm run test:spec` have nothing to run.
 
 ## 4. Configure CDK for the app
 
-Rename `infra/cdk/_template/` to match your app name:
+Copy the CDK package for your app. Keep `infra/cdk/_template/`: CI synths it against `apps/_demo/` as the template's self-test.
 
 ```bash
-mv infra/cdk/_template infra/cdk/<your-app>
-cd infra/cdk/<your-app>
+cp -r infra/cdk/_template infra/cdk/<your-app>
 ```
 
-Edit `bin/app.ts` to rename the stack id (e.g. `AppServerless` to `ArmouryServerless`). The stack id becomes the CloudFormation stack name.
+Edit `infra/cdk/<your-app>/bin/app.ts` to rename the stack id (e.g. `AppServerless` to `ArmouryServerless`). The stack id becomes the CloudFormation stack name. Step 6 points the deploy workflow at this copy.
 
-Install CDK package deps:
-
-```bash
-npm install
-cd ../../..
-```
-
-## 5. AWS account setup
+## 5. AWS credentials for the one-time setup
 
 - [ ] Create an AWS account (or use an existing one)
 - [ ] Region: pick one close to your users (e.g. `ap-southeast-1` for Singapore)
-- [ ] Create an IAM user `cdk-deploy` (or a role, if using OIDC from GitHub)
-- [ ] Attach the policy from `infra/iam/cdk-deploy-policy.json` (don't use `AdministratorAccess`)
-- [ ] Create an access key, configure `~/.aws/credentials`
-- [ ] Bootstrap CDK once: `npx cdk bootstrap aws://<account>/<region>`
+- [ ] Configure local AWS credentials (`aws configure` or SSO) that can create an IAM role and an OIDC provider and bootstrap CDK. An admin session is simplest; step 6 is the only thing that uses it.
+
+Deploys never use these credentials. They run on the OIDC role that step 6 creates, which carries the least-privilege `infra/iam/cdk-deploy-policy.json` instead of `AdministratorAccess`.
 
 ## 6. Connect GitHub and AWS (one command)
 
 For automated deploys via `.github/workflows/deploy.yml`, run the connect
 script. You (or your AI coding agent) run it once per repo, and it wires the
-whole GitHub + AWS connection: it ensures the OIDC provider, deploys the
-`_setup` role, provisions a database (Neon), generates `AUTH_SECRET`, and sets
-every GitHub Actions secret and variable.
+whole GitHub + AWS connection: it ensures the OIDC provider, bootstraps CDK,
+deploys the `_setup` role, provisions a database (Neon), generates
+`AUTH_SECRET`, and sets every GitHub Actions secret and variable.
 
 ```bash
-npm run setup
-# or: scripts/connect.sh --region ap-southeast-1
-# preview without changing anything: scripts/connect.sh --dry-run
+npm run setup -- --cdk-dir infra/cdk/<your-app>
+# or: scripts/connect.sh --cdk-dir infra/cdk/<your-app> --region ap-southeast-1
+# preview without changing anything: add --dry-run
 ```
 
-Prerequisites: `gh` (authenticated), `aws` (credentials allowed to create an
-IAM role + OIDC provider and to bootstrap CDK), and Node 22+. Optional:
-`neonctl` to auto-provision the database (otherwise the script asks for a
-`DATABASE_URL`). Re-running is safe.
+Prerequisites: `gh` (authenticated), `aws` (the step 5 credentials), and
+Node 22+. Optional: `neonctl` to auto-provision the database (otherwise the
+script asks for a `DATABASE_URL`). Re-running reuses the AWS pieces, but pass
+`--database-url` or `--skip-db` on a re-run or it provisions a second
+database. Every run also rotates `AUTH_SECRET`, which signs users out at the
+next deploy.
 
 After it finishes there is nothing else to set by hand. It configures:
 
@@ -118,7 +116,7 @@ After it finishes there is nothing else to set by hand. It configures:
 `APP_URL` is set after your first deploy, once you know the CloudFront URL
 (NextAuth needs the canonical URL). The script prints the exact command. To
 skip the two-pass dance, pass a `customDomain` to `NextjsServerless` up front
-(see `docs/DEPLOY.md` gotcha #7).
+and `--app-url` to setup (see `docs/DEPLOY.md` gotcha #7).
 
 <details>
 <summary>Prefer to do it by hand?</summary>
@@ -149,7 +147,7 @@ For the cleanest first deploy (no two-pass dance), provision a custom domain + A
 
 ## What you always forget
 
-- Step 5: Attaching the IAM policy instead of relying on root access
-- Step 6: Setting `APP_URL` (NextAuth breaks without it)
-- Step 6: Setting `ALLOWED_ORIGINS` (Server Actions break without it)
+- Step 2: Requiring the `Spec coverage gate` check (otherwise a red gate does not block the merge)
+- Step 3: Putting `test.yml` in the root `.github/workflows/` (GitHub ignores `apps/web/.github/`)
 - Step 4: Renaming the stack id in `bin/app.ts` (otherwise all your apps share the same CloudFormation stack name)
+- Step 6: Setting `APP_URL` after the first deploy (NextAuth breaks without it), then tightening `ALLOWED_ORIGINS` to the real hosts

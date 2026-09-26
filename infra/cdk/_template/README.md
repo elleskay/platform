@@ -5,9 +5,8 @@ Full CDK package for deploying a Next.js + OpenNext app to AWS serverless. Copy 
 ## Use
 
 ```bash
-# From your cloned app repo, rename _template to your app name
+# From your cloned app repo. Keep _template: CI synths it against apps/_demo.
 cp -r infra/cdk/_template infra/cdk/<your-app>
-rm -rf infra/cdk/_template
 cd infra/cdk/<your-app>
 npm install
 ```
@@ -17,6 +16,8 @@ Then edit:
 - `bin/app.ts`: rename the stack id (e.g. `AppServerless` → `ArmouryServerless`)
 - `lib/web-stack.ts`: confirm `appPath` resolves to your Next.js app directory
 - Optionally enable `customDomain` to skip the two-pass deploy (see `lib/constructs/NextjsServerless.ts` JSDoc)
+
+Pass `--cdk-dir infra/cdk/<your-app>` to `npm run setup` so the deploy workflow uses this copy (it sets the `CDK_DIR` variable).
 
 ## Deploy
 

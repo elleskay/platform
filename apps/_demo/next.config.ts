@@ -8,6 +8,11 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 
+// Read at build time. Pass the CloudFront domain AND the Lambda Function URL
+// host, comma-separated, e.g.
+//   ALLOWED_ORIGINS="d1aeysqic3xk9.cloudfront.net,xxxx.lambda-url.ap-southeast-1.on.aws"
+// Required because Next.js Server Actions reject requests when x-forwarded-host
+// (Lambda URL) does not match origin (CloudFront).
 const allowedOrigins =
   process.env.ALLOWED_ORIGINS?.split(",")
     .map((s) => s.trim())
